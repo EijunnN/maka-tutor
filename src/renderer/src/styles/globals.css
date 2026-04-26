@@ -45,3 +45,118 @@ body {
   animation: puck-enter 180ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
   transform-origin: bottom right;
 }
+
+/* Markdown del asistente — dark luxe minimal */
+.prose-aprende > *:first-child { margin-top: 0; }
+.prose-aprende > *:last-child  { margin-bottom: 0; }
+
+.prose-aprende p {
+  margin: 0 0 0.6em;
+  line-height: 1.55;
+}
+
+.prose-aprende strong {
+  color: rgb(244 244 245);
+  font-weight: 600;
+}
+
+.prose-aprende em {
+  color: rgb(212 212 216);
+  font-style: italic;
+}
+
+.prose-aprende a {
+  color: rgb(196 181 253);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(167, 139, 250, 0.4);
+}
+.prose-aprende a:hover {
+  text-decoration-color: rgba(167, 139, 250, 0.8);
+}
+
+.prose-aprende ul,
+.prose-aprende ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.25em;
+}
+.prose-aprende ul { list-style: disc; }
+.prose-aprende ol { list-style: decimal; }
+.prose-aprende li {
+  margin: 0.15em 0;
+  line-height: 1.55;
+}
+.prose-aprende li::marker {
+  color: rgba(167, 139, 250, 0.6);
+}
+
+.prose-aprende code:not(pre code) {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgb(244 244 245);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.prose-aprende pre {
+  margin: 0.6em 0;
+  padding: 0.85em;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.prose-aprende pre code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: rgb(228 228 231);
+}
+
+.prose-aprende blockquote {
+  margin: 0.6em 0;
+  padding-left: 0.85em;
+  border-left: 2px solid rgba(167, 139, 250, 0.5);
+  color: rgb(212 212 216);
+  font-style: italic;
+}
+
+.prose-aprende h1,
+.prose-aprende h2,
+.prose-aprende h3 {
+  font-weight: 600;
+  color: rgb(244 244 245);
+  margin: 0.8em 0 0.3em;
+  line-height: 1.3;
+}
+.prose-aprende h1 { font-size: 1.05rem; }
+.prose-aprende h2 { font-size: 1rem; }
+.prose-aprende h3 { font-size: 0.95rem; }
+
+.prose-aprende hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 0.8em 0;
+}
+
+.prose-aprende table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.85em;
+}
+.prose-aprende th,
+.prose-aprende td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+.prose-aprende th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+}

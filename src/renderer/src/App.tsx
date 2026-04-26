@@ -4,6 +4,7 @@ import { ChatPanel } from './components/chat/ChatPanel';
 import { ChatPuck } from './components/chat/ChatPuck';
 import { useClickthrough } from './hooks/useClickthrough';
 import { useScreenshots } from './hooks/useScreenshots';
+import { useAgent } from './hooks/useAgent';
 
 export function App() {
   const [minimized, setMinimized] = useState(false);
@@ -14,7 +15,21 @@ export function App() {
   }, []);
 
   const interactive = useClickthrough(targetRef);
-  const { shots, error, remove } = useScreenshots();
+  const { shots, error: shotsError, remove, clear } = useScreenshots();
+  const { messages, status, error: agentError, send, cancel, reset } = useAgent();
+
+  const handleSend = useCallback(
+    (text: string) => {
+      const currentShots = shots;
+      send(text, currentShots);
+      clear();
+    },
+    [send, shots, clear],
+  );
+
+  const handleReset = useCallback(() => {
+    void reset();
+  }, [reset]);
 
   return (
     <>
@@ -31,7 +46,13 @@ export function App() {
           interactive={interactive}
           shots={shots}
           onRemoveShot={remove}
-          error={error}
+          shotsError={shotsError}
+          agentError={agentError}
+          messages={messages}
+          status={status}
+          onSend={handleSend}
+          onCancel={cancel}
+          onReset={handleReset}
           onMinimize={() => setMinimized(true)}
           onClose={() => window.api.quit()}
         />
