@@ -1,20 +1,35 @@
-import { useEffect, useState } from 'react';
+import { forwardRef } from 'react';
 
-export function ChatPanel() {
-  const [pong, setPong] = useState<string>('...');
+interface ChatPanelProps {
+  interactive: boolean;
+}
 
-  useEffect(() => {
-    setPong(window.api.ping());
-  }, []);
-
+export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function ChatPanel(
+  { interactive },
+  ref,
+) {
   return (
-    <div className="pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[520px] w-[400px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/70 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+    <div
+      ref={ref}
+      className={`pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[520px] w-[400px] flex-col overflow-hidden rounded-2xl border bg-zinc-950/70 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-[border-color,box-shadow] duration-200 ${
+        interactive
+          ? 'border-violet-400/40 shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
+          : 'border-white/10'
+      }`}
+    >
       <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+          <span
+            className={`h-2 w-2 rounded-full transition-colors ${
+              interactive
+                ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]'
+                : 'bg-zinc-600'
+            }`}
+            title={interactive ? 'Interactivo' : 'Click-through'}
+          />
           <h2 className="text-sm font-semibold text-zinc-100">aprende-mierda</h2>
           <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
-            Fase 1
+            Fase 2
           </span>
         </div>
         <button
@@ -23,7 +38,15 @@ export function ChatPanel() {
           className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
           aria-label="Cerrar"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
@@ -40,7 +63,15 @@ export function ChatPanel() {
             y dime qué quieres hacer.
           </p>
           <p className="mt-2 text-[11px] text-zinc-500">
-            (La hotkey y la captura llegan en Fase 2/3)
+            (La hotkey y la captura llegan en Fase 3)
+          </p>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px] text-zinc-500">
+          <p>
+            <span className="font-medium text-zinc-300">Tip:</span> mueve el cursor fuera del
+            panel y haz click; debería ir al programa de abajo. Vuelve sobre el panel y el dot
+            se pone verde.
           </p>
         </div>
       </div>
@@ -54,10 +85,7 @@ export function ChatPanel() {
             disabled
           />
         </div>
-        <p className="mt-2 text-[10px] text-zinc-600">
-          IPC bridge: <span className="font-mono text-emerald-400/80">{pong}</span>
-        </p>
       </div>
     </div>
   );
-}
+});

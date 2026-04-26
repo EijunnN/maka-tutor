@@ -4,8 +4,14 @@ import { createOverlayWindow } from './window';
 let mainWindow: BrowserWindow | null = null;
 
 ipcMain.handle('ping', () => 'pong');
+
 ipcMain.handle('app:quit', () => {
   app.quit();
+});
+
+ipcMain.handle('overlay:set-clickthrough', (_event, enabled: boolean) => {
+  if (!mainWindow) return;
+  mainWindow.setIgnoreMouseEvents(enabled, { forward: true });
 });
 
 app.whenReady().then(() => {

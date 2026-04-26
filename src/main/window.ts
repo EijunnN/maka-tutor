@@ -35,6 +35,7 @@ export function createOverlayWindow(): BrowserWindow {
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.setContentProtection(true);
+  win.setIgnoreMouseEvents(true, { forward: true });
 
   win.on('ready-to-show', () => win.show());
 
