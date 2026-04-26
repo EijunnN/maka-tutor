@@ -2,6 +2,15 @@
   "name": "maka-tutor",
   "version": "0.0.1",
   "description": "Maka Tutor — overlay de escritorio que enseña lo que tienes en pantalla con visión multimodal",
+  "author": {
+    "name": "Eijunn",
+    "url": "https://github.com/EijunnN"
+  },
+  "homepage": "https://github.com/EijunnN/maka-tutor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EijunnN/maka-tutor.git"
+  },
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

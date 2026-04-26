@@ -1,0 +1,37 @@
+appId: com.eijunnn.maka-tutor
+productName: Maka Tutor
+copyright: Copyright © 2026 Maka Tutor
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**
+  - package.json
+  - '!**/*.{md,map,d.ts}'
+  - '!**/.bin'
+  - '!**/{.DS_Store,.git,.gitignore,.github,.eslintrc,.prettierrc}'
+
+# electron-store debe ir desempaquetado de asar para que pueda escribir.
+asarUnpack:
+  - node_modules/electron-store/**
+  - node_modules/conf/**
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-Setup-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Maka Tutor
+  uninstallDisplayName: Maka Tutor ${version}
+  deleteAppDataOnUninstall: false
