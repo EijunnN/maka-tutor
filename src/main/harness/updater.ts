@@ -1,11 +1,9 @@
 import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { findClaudeExecutable } from '../claudePath';
+import { getModel } from '../settings';
 import { patchProfile, type UserProfile } from './profile';
 import { patchDomain, type DomainProfile } from './domains';
 import { addSkill, reinforceSkills, weakenSkills, type Skill } from './skills';
-
-// Haiku barato para clasificación + updates. ~$0.001-0.003 por turno.
-const UPDATER_MODEL = 'claude-haiku-4-5-20251001';
 
 const UPDATER_SYSTEM = `Eres un actualizador de perfil + curador de playbooks pedagógicos de un alumno que está siendo tutorizado por otro agente.
 
@@ -185,7 +183,9 @@ export async function runUpdater(input: UpdaterInput): Promise<{
     const stream = query({
       prompt: promptStream(),
       options: {
-        model: UPDATER_MODEL,
+        // Mismo modelo que el chat (configurable desde Settings).
+        // Mantiene una sola elección de modelo para toda la app.
+        model: getModel(),
         systemPrompt: UPDATER_SYSTEM,
         allowedTools: [],
         settingSources: [],
