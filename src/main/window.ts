@@ -1,11 +1,12 @@
 import { BrowserWindow, screen } from 'electron';
 import { join } from 'node:path';
+import { MicaBrowserWindow, IS_WINDOWS_11 } from 'mica-electron';
 
 export function createOverlayWindow(): BrowserWindow {
   const primary = screen.getPrimaryDisplay();
   const { x, y, width, height } = primary.workArea;
 
-  const win = new BrowserWindow({
+  const winOpts = {
     x,
     y,
     width,
@@ -30,7 +31,27 @@ export function createOverlayWindow(): BrowserWindow {
       sandbox: false,
       backgroundThrottling: false,
     },
-  });
+  } as const;
+
+  // En Win11, MicaBrowserWindow expone DwmSetWindowAttribute
+  // (Mica + Acrylic). El acrylic blurea el wallpaper detrás
+  // de la ventana SOLO en píxeles con alfa parcial — las
+  // zonas completamente transparentes del webview siguen
+  // mostrando el desktop sin blur.
+  const win: BrowserWindow =
+    process.platform === 'win32' && IS_WINDOWS_11
+      ? (new MicaBrowserWindow(winOpts) as unknown as BrowserWindow)
+      : new BrowserWindow(winOpts);
+
+  if (process.platform === 'win32' && IS_WINDOWS_11) {
+    const mw = win as unknown as MicaBrowserWindow;
+    try {
+      mw.setDarkTheme();
+      mw.setMicaAcrylicEffect();
+    } catch (err) {
+      console.warn('[window] acrylic setup failed', err);
+    }
+  }
 
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
