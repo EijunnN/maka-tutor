@@ -1,20 +1,25 @@
 import { forwardRef } from 'react';
+import type { ScreenshotEvent } from '@shared/types';
+import { ScreenshotPreview } from './ScreenshotPreview';
 
 interface ChatPanelProps {
   interactive: boolean;
+  shots: ScreenshotEvent[];
+  onRemoveShot: (path: string) => void;
+  error: string | null;
 }
 
 export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function ChatPanel(
-  { interactive },
+  { interactive, shots, onRemoveShot, error },
   ref,
 ) {
   return (
     <div
       ref={ref}
-      className={`pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[520px] w-[400px] flex-col overflow-hidden rounded-2xl border bg-zinc-950/70 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-[border-color,box-shadow] duration-200 ${
+      className={`pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[560px] w-[420px] flex-col overflow-hidden rounded-2xl border bg-neutral-950/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)] backdrop-blur-md transition-[border-color,box-shadow] duration-200 ${
         interactive
-          ? 'border-violet-400/40 shadow-[0_20px_60px_rgba(139,92,246,0.25)]'
-          : 'border-white/10'
+          ? 'border-violet-400/40 shadow-[0_24px_70px_rgba(139,92,246,0.3)]'
+          : 'border-white/15'
       }`}
     >
       <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
@@ -29,7 +34,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
           />
           <h2 className="text-sm font-semibold text-zinc-100">aprende-mierda</h2>
           <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
-            Fase 2
+            Fase 3
           </span>
         </div>
         <button
@@ -56,25 +61,32 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-sm text-zinc-400">
           <p className="font-medium text-zinc-300">Hola.</p>
           <p className="mt-1 leading-relaxed">
-            Soy tu tutor. Cuando tengas algo en pantalla que no entiendas, presiona{' '}
-            <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-mono text-zinc-200">
-              Ctrl+Shift+Space
-            </kbd>{' '}
-            y dime qué quieres hacer.
+            Soy tu tutor. Captura lo que ves y mándame lo que quieres aprender.
           </p>
-          <p className="mt-2 text-[11px] text-zinc-500">
-            (La hotkey y la captura llegan en Fase 3)
-          </p>
+          <div className="mt-2 space-y-1 text-[11px] text-zinc-500">
+            <p>
+              <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-zinc-200">
+                Ctrl+Shift+Space
+              </kbd>{' '}
+              — captura el monitor donde tienes el cursor.
+            </p>
+            <p>
+              <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-zinc-200">
+                Ctrl+Shift+A
+              </kbd>{' '}
+              — selecciona un área (próximamente).
+            </p>
+          </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px] text-zinc-500">
-          <p>
-            <span className="font-medium text-zinc-300">Tip:</span> mueve el cursor fuera del
-            panel y haz click; debería ir al programa de abajo. Vuelve sobre el panel y el dot
-            se pone verde.
-          </p>
-        </div>
+        {error && (
+          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
+            {error}
+          </div>
+        )}
       </div>
+
+      <ScreenshotPreview shots={shots} onRemove={onRemoveShot} />
 
       <div className="border-t border-white/5 p-3">
         <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/[0.05]">
@@ -85,6 +97,11 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
             disabled
           />
         </div>
+        <p className="mt-2 text-[10px] text-zinc-600">
+          {shots.length > 0
+            ? `${shots.length} captura${shots.length === 1 ? '' : 's'} adjunta${shots.length === 1 ? '' : 's'}`
+            : 'Sin adjuntos. Pulsa la hotkey para capturar.'}
+        </p>
       </div>
     </div>
   );
