@@ -41,6 +41,11 @@ export interface EventsBridge {
   onAgentError: (cb: (err: AgentErrorEvent) => void) => () => void;
 }
 
+export interface SettingsSnapshot {
+  hasApiKey: boolean;
+  model: string;
+}
+
 export interface ApiBridge {
   ping: () => string;
   quit: () => Promise<void>;
@@ -48,4 +53,7 @@ export interface ApiBridge {
   sendTurn: (payload: SendTurnPayload) => Promise<void>;
   cancelTurn: () => Promise<void>;
   resetSession: () => Promise<void>;
+  getSettings: () => Promise<SettingsSnapshot>;
+  setApiKey: (value: string | null) => Promise<{ ok: boolean; message?: string }>;
+  setModel: (model: string) => Promise<void>;
 }

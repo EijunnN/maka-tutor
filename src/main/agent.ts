@@ -1,6 +1,9 @@
 import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import { readFile } from 'node:fs/promises';
-import type { BrowserWindow } from 'electron';
+import { nativeImage, type BrowserWindow } from 'electron';
+import { getModel } from './settings';
+
+const MAX_IMAGE_DIMENSION = 1568;
+const JPEG_QUALITY = 85;
 
 interface ScreenshotInput {
   path: string;
@@ -12,8 +15,6 @@ interface SendTurnArgs {
   text: string;
   screenshots: ScreenshotInput[];
 }
-
-const MODEL = 'claude-sonnet-4-5-20250929';
 
 const SYSTEM_PROMPT = `Eres un tutor experto en software, productividad y herramientas digitales. El usuario te comparte screenshots de su pantalla y te pide que le enseñes a usar lo que está viendo o a hacer una tarea específica.
 
@@ -49,16 +50,35 @@ interface ContentBlock {
   source?: { type: string; media_type: string; data: string };
 }
 
+function compressForVision(absolutePath: string): { data: string; mediaType: string } {
+  const img = nativeImage.createFromPath(absolutePath);
+  if (img.isEmpty()) {
+    throw new Error(`Could not load image at ${absolutePath}`);
+  }
+  const { width, height } = img.getSize();
+  const longest = Math.max(width, height);
+  const scale = longest > MAX_IMAGE_DIMENSION ? MAX_IMAGE_DIMENSION / longest : 1;
+  const resized = scale < 1
+    ? img.resize({
+        width: Math.round(width * scale),
+        height: Math.round(height * scale),
+        quality: 'best',
+      })
+    : img;
+  const jpeg = resized.toJPEG(JPEG_QUALITY);
+  return { data: jpeg.toString('base64'), mediaType: 'image/jpeg' };
+}
+
 async function buildUserContent(args: SendTurnArgs): Promise<ContentBlock[]> {
   const content: ContentBlock[] = [];
   for (const shot of args.screenshots) {
-    const buffer = await readFile(shot.path);
+    const { data, mediaType } = compressForVision(shot.path);
     content.push({
       type: 'image',
       source: {
         type: 'base64',
-        media_type: 'image/png',
-        data: buffer.toString('base64'),
+        media_type: mediaType,
+        data,
       },
     });
   }
@@ -88,7 +108,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
     const stream = query({
       prompt: promptStream(),
       options: {
-        model: MODEL,
+        model: getModel(),
         systemPrompt: SYSTEM_PROMPT,
         allowedTools: [],
         resume: lastSessionId,

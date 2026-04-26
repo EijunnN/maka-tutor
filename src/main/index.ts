@@ -4,6 +4,12 @@ import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { pathToShotUrl, registerShotProtocol, SHOT_SCHEME } from './protocol';
 import { openSelectionWindow } from './selectionWindow';
 import { cancelCurrentTurn, resetSession, sendTurn } from './agent';
+import {
+  applyApiKeyToEnv,
+  getSnapshot,
+  setApiKey,
+  setModel,
+} from './settings';
 import type { SendTurnPayload } from '@shared/types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -39,7 +45,24 @@ ipcMain.handle('agent:reset', () => {
   resetSession();
 });
 
+ipcMain.handle('settings:get', () => getSnapshot());
+
+ipcMain.handle('settings:set-api-key', (_event, value: string | null) => {
+  try {
+    setApiKey(value);
+    applyApiKeyToEnv();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : String(err) };
+  }
+});
+
+ipcMain.handle('settings:set-model', (_event, model: string) => {
+  setModel(model);
+});
+
 app.whenReady().then(() => {
+  applyApiKeyToEnv();
   registerShotProtocol();
 
   mainWindow = createOverlayWindow();

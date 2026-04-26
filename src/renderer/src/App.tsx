@@ -8,6 +8,7 @@ import { useAgent } from './hooks/useAgent';
 
 export function App() {
   const [minimized, setMinimized] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const targetRef = useRef<HTMLElement | null>(null);
 
   const setTarget = useCallback((el: HTMLElement | null) => {
@@ -55,6 +56,9 @@ export function App() {
           onReset={handleReset}
           onMinimize={() => setMinimized(true)}
           onClose={() => window.api.quit()}
+          onOpenSettings={() => setSettingsOpen(true)}
+          settingsOpen={settingsOpen}
+          onCloseSettings={() => setSettingsOpen(false)}
         />
       )}
     </>

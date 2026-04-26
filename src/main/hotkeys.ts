@@ -4,6 +4,7 @@ import { captureMonitorAtCursor } from './capture';
 
 export const HOTKEY_FULL = 'CommandOrControl+Shift+Space';
 export const HOTKEY_REGION = 'CommandOrControl+Shift+A';
+export const HOTKEY_TOGGLE = 'CommandOrControl+Shift+H';
 
 const HIDE_DELAY_MS = 80;
 
@@ -14,6 +15,16 @@ interface RegisterArgs {
 }
 
 export function registerHotkeys({ getMainWindow, onRegion, pathToShotUrl }: RegisterArgs) {
+  globalShortcut.register(HOTKEY_TOGGLE, () => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    if (win.isVisible()) {
+      win.hide();
+    } else {
+      win.showInactive();
+    }
+  });
+
   globalShortcut.register(HOTKEY_FULL, async () => {
     const win = getMainWindow();
     if (!win) return;

@@ -7,6 +7,7 @@ import type {
   ScreenshotError,
   ScreenshotEvent,
   SendTurnPayload,
+  SettingsSnapshot,
   TurnEndEvent,
 } from '@shared/types';
 
@@ -17,6 +18,9 @@ const api: ApiBridge = {
   sendTurn: (payload: SendTurnPayload) => ipcRenderer.invoke('agent:send', payload),
   cancelTurn: () => ipcRenderer.invoke('agent:cancel'),
   resetSession: () => ipcRenderer.invoke('agent:reset'),
+  getSettings: () => ipcRenderer.invoke('settings:get') as Promise<SettingsSnapshot>,
+  setApiKey: (value) => ipcRenderer.invoke('settings:set-api-key', value),
+  setModel: (model) => ipcRenderer.invoke('settings:set-model', model),
 };
 
 function subscribe<T>(channel: string, cb: (data: T) => void): () => void {

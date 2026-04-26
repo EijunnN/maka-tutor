@@ -1,10 +1,11 @@
 import { forwardRef } from 'react';
-import { X, Minus, Sparkles, Camera, ScanLine, RotateCcw } from 'lucide-react';
+import { X, Minus, Sparkles, Camera, ScanLine, RotateCcw, Settings } from 'lucide-react';
 import type { ScreenshotEvent } from '@shared/types';
 import type { AgentStatus, ChatMessage } from '../../hooks/useAgent';
 import { ScreenshotPreview } from './ScreenshotPreview';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
+import { SettingsDialog } from '../settings/SettingsDialog';
 
 interface ChatPanelProps {
   interactive: boolean;
@@ -19,6 +20,9 @@ interface ChatPanelProps {
   onReset: () => void;
   onMinimize: () => void;
   onClose: () => void;
+  onOpenSettings: () => void;
+  settingsOpen: boolean;
+  onCloseSettings: () => void;
 }
 
 export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
@@ -36,6 +40,9 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
       onReset,
       onMinimize,
       onClose,
+      onOpenSettings,
+      settingsOpen,
+      onCloseSettings,
     },
     ref,
   ) => {
@@ -66,6 +73,15 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
                 <RotateCcw size={14} strokeWidth={2} />
               </button>
             )}
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              aria-label="Ajustes"
+              title="Ajustes"
+              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+            >
+              <Settings size={14} strokeWidth={2} />
+            </button>
             <button
               type="button"
               onClick={onMinimize}
@@ -139,6 +155,8 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
             onCancel={onCancel}
           />
         </div>
+
+        <SettingsDialog open={settingsOpen} onClose={onCloseSettings} />
       </div>
     );
   },
