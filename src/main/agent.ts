@@ -1,6 +1,7 @@
 import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { nativeImage, type BrowserWindow } from 'electron';
 import { getModel } from './settings';
+import { findClaudeExecutable } from './claudePath';
 
 const MAX_IMAGE_DIMENSION = 1568;
 const JPEG_QUALITY = 85;
@@ -121,6 +122,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
   }, 15_000);
 
   try {
+    const userClaudeBin = findClaudeExecutable();
     const stream = query({
       prompt: promptStream(),
       options: {
@@ -130,6 +132,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
         resume: lastSessionId,
         abortController: abort,
         settingSources: [],
+        ...(userClaudeBin ? { pathToClaudeCodeExecutable: userClaudeBin } : {}),
       },
     });
 
