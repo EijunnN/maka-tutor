@@ -190,6 +190,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
             domainId: turnCtx.domain?.id ?? null,
             currentProfile: turnCtx.profile,
             currentDomain: turnCtx.domain,
+            currentSkills: turnCtx.skills,
             userText: args.text,
             assistantText: assistantAccum,
           });

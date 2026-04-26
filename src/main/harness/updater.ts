@@ -2,13 +2,14 @@ import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { findClaudeExecutable } from '../claudePath';
 import { patchProfile, type UserProfile } from './profile';
 import { patchDomain, type DomainProfile } from './domains';
+import { addSkill, reinforceSkills, weakenSkills, type Skill } from './skills';
 
 // Haiku barato para clasificación + updates. ~$0.001-0.003 por turno.
 const UPDATER_MODEL = 'claude-haiku-4-5-20251001';
 
-const UPDATER_SYSTEM = `Eres un actualizador de perfil de un alumno que está siendo tutorizado por otro agente.
+const UPDATER_SYSTEM = `Eres un actualizador de perfil + curador de playbooks pedagógicos de un alumno que está siendo tutorizado por otro agente.
 
-Recibes el último turno (mensaje del usuario + respuesta del tutor) y opcionalmente el perfil/dominio actuales.
+Recibes el último turno (mensaje del usuario + respuesta del tutor) y opcionalmente el perfil/dominio/skills actuales.
 
 Devuelve EXCLUSIVAMENTE un JSON con este shape (sin texto antes o después, sin markdown, sin explicaciones):
 
@@ -25,32 +26,60 @@ Devuelve EXCLUSIVAMENTE un JSON con este shape (sin texto antes o después, sin 
     "concepts_in_progress"?: string[],
     "recurring_mistakes"?: string[],
     "notes"?: string
+  },
+  "skill_updates": {
+    "new_skills"?: Array<{ "trigger": string, "approach": string, "evidence": string }>,
+    "reinforce_skill_ids"?: string[],
+    "weaken_skill_ids"?: string[]
   }
 }
 
-Reglas:
+Reglas profile/domain:
 - Sé CONSERVADOR. Si no hay evidencia clara, devuelve {} (no inventes).
-- Solo añade items NUEVOS, no repitas los que ya están en el perfil/dominio actuales (te los paso para que sepas).
-- "concepts_mastered" requiere que el usuario haya demostrado que entendió, no solo que se le explicó.
+- Solo añade items NUEVOS, no repitas los existentes.
+- "concepts_mastered" requiere evidencia de comprensión, no solo de explicación.
 - "concepts_in_progress" si se mencionó pero no se confirmó dominio.
-- "recurring_mistakes" solo si VIO un error específico del usuario en este turno.
-- "notes" para detalles de personalidad, contexto profesional o preferencias mencionadas explícitamente.
-- "level_general" / domain "level" actualízalos solo si tienes evidencia fuerte de cambio (varios turnos en este nivel).
-- Si el dominio_id que recibes es null, omite "domain_updates" o devuelve {} ahí.
+- "recurring_mistakes" solo si VIO un error específico del usuario.
+- "notes" para detalles de personalidad o preferencias mencionadas explícitamente.
+- "level" actualízalo solo con evidencia fuerte (varios turnos en ese nivel).
+- Si el dominio_id es null, omite "domain_updates" y "skill_updates" o devuelve {} en cada uno.
 
-Sé corto en concepts/notes (máx 5-7 palabras cada string).`;
+Reglas skills (PLAYBOOKS PEDAGÓGICOS):
+- Una "skill" es un approach didáctico replicable: "cuando el usuario X (trigger), explicarle así (approach)".
+- "new_skills" SOLO si en este turno apareció un approach nuevo y notable (no algo trivial). Máx 1 por turno.
+  · trigger: cuándo aplica (5-12 palabras, en infinitivo o describiendo la situación).
+  · approach: cómo se hizo (10-25 palabras, accionable).
+  · evidence: una frase corta de qué pasó este turno.
+- "reinforce_skill_ids": ids de skills existentes que el tutor USÓ y FUNCIONARON este turno (el usuario respondió bien, entendió, avanzó). Máx 2.
+- "weaken_skill_ids": ids de skills existentes que el tutor USÓ pero NO funcionaron (usuario no entendió, repitió la duda, falló). Máx 2.
+- NO inventes ids; usa los que aparecen en el bloque de "Skills actuales" entre corchetes.
+- Si no hay evidencia para skills, omite "skill_updates" o devuelve {}.
+
+Sé corto en concepts/notes/triggers/approaches (máx 5-25 palabras cada string).`;
 
 interface UpdaterInput {
   domainId: string | null;
   currentProfile: UserProfile;
   currentDomain: DomainProfile | null;
+  currentSkills: Skill[];
   userText: string;
   assistantText: string;
+}
+
+interface SkillProposal {
+  trigger: string;
+  approach: string;
+  evidence?: string;
 }
 
 interface UpdaterOutput {
   profile_updates?: Partial<UserProfile>;
   domain_updates?: Partial<DomainProfile>;
+  skill_updates?: {
+    new_skills?: SkillProposal[];
+    reinforce_skill_ids?: string[];
+    weaken_skill_ids?: string[];
+  };
 }
 
 function buildPrompt(input: UpdaterInput): string {
@@ -79,11 +108,24 @@ function buildPrompt(input: UpdaterInput): string {
       )
     : 'null';
 
+  const skillsBlock =
+    input.currentSkills.length > 0
+      ? input.currentSkills
+          .map(
+            (s) =>
+              `- [${s.id}] (score ${s.score.toFixed(2)}, ${s.uses} usos) trigger: ${s.trigger} | approach: ${s.approach}`,
+          )
+          .join('\n')
+      : '(ninguna)';
+
   return `## Perfil actual
 ${profileSummary}
 
 ## Dominio detectado
 ${domainSummary}
+
+## Skills actuales del dominio
+${skillsBlock}
 
 ## Último mensaje del usuario
 ${truncate(input.userText, 800)}
@@ -198,6 +240,39 @@ export async function runUpdater(input: UpdaterInput): Promise<{
       if (domain) result.domain = domain;
     } catch (err) {
       console.warn('[updater] patch domain failed', err);
+    }
+  }
+
+  // Skill updates SOLO si hay dominio (los playbooks viven por
+  // dominio, no son globales).
+  if (input.domainId && parsed.skill_updates) {
+    const su = parsed.skill_updates;
+    try {
+      if (Array.isArray(su.reinforce_skill_ids) && su.reinforce_skill_ids.length > 0) {
+        await reinforceSkills(input.domainId, su.reinforce_skill_ids.slice(0, 2));
+      }
+      if (Array.isArray(su.weaken_skill_ids) && su.weaken_skill_ids.length > 0) {
+        await weakenSkills(input.domainId, su.weaken_skill_ids.slice(0, 2));
+      }
+      if (Array.isArray(su.new_skills) && su.new_skills.length > 0) {
+        // Máx 1 skill nueva por turno para no inflar el inventario.
+        const proposal = su.new_skills[0];
+        if (
+          proposal &&
+          typeof proposal.trigger === 'string' &&
+          typeof proposal.approach === 'string' &&
+          proposal.trigger.trim().length >= 3 &&
+          proposal.approach.trim().length >= 5
+        ) {
+          await addSkill(input.domainId, {
+            trigger: proposal.trigger,
+            approach: proposal.approach,
+            evidence: proposal.evidence,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[updater] skill updates failed', err);
     }
   }
 

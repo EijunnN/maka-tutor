@@ -1,6 +1,7 @@
 import { detectDomain, loadDomain, touchDomain, type DomainProfile } from './domains';
 import { loadProfile, type UserProfile } from './profile';
 import { searchMemory, type MemoryHit } from './memory';
+import { getRelevantSkills, type Skill } from './skills';
 
 const BASE_PROMPT = `Eres un tutor experto en software, productividad y herramientas digitales. El usuario te comparte screenshots de su pantalla y te pide que le enseñes a usar lo que está viendo o a hacer una tarea específica.
 
@@ -18,6 +19,7 @@ export interface TurnContext {
   domain: DomainProfile | null;
   profile: UserProfile;
   memoryHits: MemoryHit[];
+  skills: Skill[];
 }
 
 export async function buildTurnContext(userText: string): Promise<TurnContext> {
@@ -28,6 +30,7 @@ export async function buildTurnContext(userText: string): Promise<TurnContext> {
     await touchDomain(domain.id);
   }
   const memoryHits = searchMemory(userText, { domain: domain?.id, limit: 3 });
+  const skills = domain ? await getRelevantSkills(domain.id, userText, 4) : [];
 
   const sections: string[] = [BASE_PROMPT];
 
@@ -62,6 +65,21 @@ export async function buildTurnContext(userText: string): Promise<TurnContext> {
     }
   }
 
+  // Skills/playbooks pedagógicos aprendidos en este dominio.
+  // Cada skill incluye su id para que el updater pueda referenciarla
+  // por id en reinforce_skill_ids / weaken_skill_ids.
+  if (skills.length > 0 && domain) {
+    const skillBlock = skills
+      .map(
+        (s) =>
+          `- [${s.id}] (score ${s.score.toFixed(2)}, ${s.uses} usos)\n  · trigger: ${s.trigger}\n  · approach: ${s.approach}`,
+      )
+      .join('\n');
+    sections.push(
+      `## Cómo enseñarle a este usuario en ${domain.display_name}\nApproaches que han funcionado antes; aplica el más relevante al turno actual cuando sea aplicable. Si vas a probar uno nuevo, hazlo deliberadamente para que se aprenda.\n\n${skillBlock}`,
+    );
+  }
+
   // Recuerdos relevantes de conversaciones pasadas
   if (memoryHits.length > 0) {
     const memBlock = memoryHits
@@ -83,6 +101,7 @@ export async function buildTurnContext(userText: string): Promise<TurnContext> {
     domain,
     profile,
     memoryHits,
+    skills,
   };
 }
 
