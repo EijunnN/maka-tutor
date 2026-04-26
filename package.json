@@ -14,6 +14,7 @@
     "typecheck": "bun run typecheck:node && bun run typecheck:web"
   },
   "dependencies": {
+    "lucide-react": "^1.11.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

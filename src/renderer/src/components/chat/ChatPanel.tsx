@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { X, Minus, Sparkles, Camera, ScanLine, Send } from 'lucide-react';
 import type { ScreenshotEvent } from '@shared/types';
 import { ScreenshotPreview } from './ScreenshotPreview';
 
@@ -7,102 +8,131 @@ interface ChatPanelProps {
   shots: ScreenshotEvent[];
   onRemoveShot: (path: string) => void;
   error: string | null;
+  onMinimize: () => void;
+  onClose: () => void;
 }
 
-export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function ChatPanel(
-  { interactive, shots, onRemoveShot, error },
-  ref,
-) {
-  return (
-    <div
-      ref={ref}
-      className={`pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[560px] w-[420px] flex-col overflow-hidden rounded-2xl border bg-neutral-950/95 shadow-[0_24px_70px_rgba(0,0,0,0.75)] backdrop-blur-md transition-[border-color,box-shadow] duration-200 ${
-        interactive
-          ? 'border-violet-400/40 shadow-[0_24px_70px_rgba(139,92,246,0.3)]'
-          : 'border-white/15'
-      }`}
-    >
-      <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full transition-colors ${
-              interactive
-                ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]'
-                : 'bg-zinc-600'
-            }`}
-            title={interactive ? 'Interactivo' : 'Click-through'}
-          />
-          <h2 className="text-sm font-semibold text-zinc-100">aprende-mierda</h2>
-          <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-zinc-400">
-            Fase 3
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => window.api.quit()}
-          className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"
-          aria-label="Cerrar"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-          >
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-      </header>
+export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
+  ({ interactive, shots, onRemoveShot, error, onMinimize, onClose }, ref) => {
+    const borderClass = interactive ? 'border-violet-400/25' : 'border-white/10';
+    const shadowClass = interactive
+      ? 'shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_0_1px_rgba(139,92,246,0.08),0_8px_40px_-8px_rgba(139,92,246,0.25)]'
+      : 'shadow-[0_24px_70px_rgba(0,0,0,0.7)]';
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-sm text-zinc-400">
-          <p className="font-medium text-zinc-300">Hola.</p>
-          <p className="mt-1 leading-relaxed">
-            Soy tu tutor. Captura lo que ves y mándame lo que quieres aprender.
+    return (
+      <div
+        ref={ref}
+        className={`animate-panel-enter pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[580px] w-[440px] flex-col overflow-hidden rounded-3xl border ${borderClass} bg-neutral-950/95 backdrop-blur-xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-300 ${shadowClass}`}
+      >
+        <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex size-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-400/30 via-violet-500/20 to-blue-500/10 ring-1 ring-inset ring-white/10">
+              <div className="size-1.5 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(167,139,250,0.6)]" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-medium tracking-tight text-zinc-100">aprende</span>
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] text-zinc-500">
+                <span className="size-1 animate-pulse rounded-full bg-emerald-400/80" />
+                ready
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onMinimize}
+              aria-label="Minimizar"
+              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+            >
+              <Minus size={14} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-8">
+          <div className="relative mb-5 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/10 ring-1 ring-inset ring-white/10">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-400/10 to-transparent blur-xl" />
+            <Sparkles size={20} strokeWidth={2} className="relative text-violet-300" />
+          </div>
+          <h2 className="text-base font-medium tracking-tight text-zinc-100">Listo para enseñarte</h2>
+          <p className="mt-1.5 text-center text-xs leading-relaxed text-zinc-500">
+            Captura tu pantalla y dime qué quieres aprender
           </p>
-          <div className="mt-2 space-y-1 text-[11px] text-zinc-500">
-            <p>
-              <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-zinc-200">
-                Ctrl+Shift+Space
-              </kbd>{' '}
-              — captura el monitor donde tienes el cursor.
-            </p>
-            <p>
-              <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-zinc-200">
-                Ctrl+Shift+A
-              </kbd>{' '}
-              — selecciona un área de la pantalla (estilo recortes).
-            </p>
+
+          <div className="mt-6 flex w-full max-w-[300px] flex-col gap-1.5">
+            <button
+              type="button"
+              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/5 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+            >
+              <Camera size={14} strokeWidth={2} className="text-zinc-400 transition-colors group-hover:text-zinc-200" />
+              <span className="flex-1 text-xs text-zinc-300">Capturar pantalla completa</span>
+              <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Ctrl</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Space</span>
+              </kbd>
+            </button>
+            <button
+              type="button"
+              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/5 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+            >
+              <ScanLine size={14} strokeWidth={2} className="text-zinc-400 transition-colors group-hover:text-zinc-200" />
+              <span className="flex-1 text-xs text-zinc-300">Recortar área</span>
+              <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Ctrl</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">A</span>
+              </kbd>
+            </button>
           </div>
         </div>
 
-        {error && (
-          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-            {error}
+        <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
+          {error && (
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+              {error}
+            </div>
+          )}
+
+          {shots.length > 0 && <ScreenshotPreview shots={shots} onRemove={onRemoveShot} />}
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] transition-colors duration-200 focus-within:border-violet-400/40 focus-within:bg-white/[0.04]">
+            <div className="px-4 pt-3.5">
+              <input
+                type="text"
+                disabled
+                placeholder="Pregúntame sobre lo que tienes en pantalla…"
+                className="w-full bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 outline-none disabled:cursor-not-allowed"
+              />
+            </div>
+            <div className="flex items-center justify-between px-3 pb-2.5 pt-3">
+              <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⌘</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Space</span>
+              </kbd>
+              <button
+                type="button"
+                disabled
+                aria-label="Enviar mensaje"
+                className="flex size-8 items-center justify-center rounded-full bg-white/5 text-zinc-600 transition-all duration-150 disabled:cursor-not-allowed enabled:bg-violet-500 enabled:text-white enabled:hover:bg-violet-400 enabled:hover:shadow-[0_0_20px_-2px_rgba(139,92,246,0.5)]"
+              >
+                <Send size={14} strokeWidth={2} />
+              </button>
+            </div>
           </div>
-        )}
-      </div>
-
-      <ScreenshotPreview shots={shots} onRemove={onRemoveShot} />
-
-      <div className="border-t border-white/5 p-3">
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/[0.05]">
-          <input
-            type="text"
-            placeholder="Enséñame Power BI, quiero cargar un CSV..."
-            className="w-full bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-            disabled
-          />
         </div>
-        <p className="mt-2 text-[10px] text-zinc-600">
-          {shots.length > 0
-            ? `${shots.length} captura${shots.length === 1 ? '' : 's'} adjunta${shots.length === 1 ? '' : 's'}`
-            : 'Sin adjuntos. Pulsa la hotkey para capturar.'}
-        </p>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
+
+ChatPanel.displayName = 'ChatPanel';

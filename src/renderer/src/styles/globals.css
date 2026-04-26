@@ -13,3 +13,35 @@ body,
 body {
   overflow: hidden;
 }
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes puck-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-panel-enter {
+  animation: panel-enter 200ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transform-origin: bottom right;
+}
+
+.animate-puck-enter {
+  animation: puck-enter 180ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  transform-origin: bottom right;
+}
