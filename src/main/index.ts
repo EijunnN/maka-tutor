@@ -1,41 +1,20 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'node:path';
+import { createOverlayWindow } from './window';
 
 let mainWindow: BrowserWindow | null = null;
 
-function createWindow(): void {
-  mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 720,
-    show: false,
-    title: 'aprende-mierda',
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
-
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show();
-  });
-
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-}
-
 ipcMain.handle('ping', () => 'pong');
+ipcMain.handle('app:quit', () => {
+  app.quit();
+});
 
 app.whenReady().then(() => {
-  createWindow();
+  mainWindow = createOverlayWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      mainWindow = createOverlayWindow();
+    }
   });
 });
 

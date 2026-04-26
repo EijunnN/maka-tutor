@@ -3,6 +3,7 @@ import type { ApiBridge } from '@shared/types';
 
 const api: ApiBridge = {
   ping: () => 'pong-from-preload',
+  quit: () => ipcRenderer.invoke('app:quit'),
 };
 
 contextBridge.exposeInMainWorld('api', api);
