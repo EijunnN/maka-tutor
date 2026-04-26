@@ -3,6 +3,8 @@ import { createOverlayWindow } from './window';
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { pathToShotUrl, registerShotProtocol, SHOT_SCHEME } from './protocol';
 import { openSelectionWindow } from './selectionWindow';
+import { cancelCurrentTurn, resetSession, sendTurn } from './agent';
+import type { SendTurnPayload } from '@shared/types';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -22,6 +24,19 @@ ipcMain.handle('app:quit', () => {
 ipcMain.handle('overlay:set-clickthrough', (_event, enabled: boolean) => {
   if (!mainWindow) return;
   mainWindow.setIgnoreMouseEvents(enabled, { forward: true });
+});
+
+ipcMain.handle('agent:send', async (_event, payload: SendTurnPayload) => {
+  if (!mainWindow) return;
+  await sendTurn(payload, mainWindow);
+});
+
+ipcMain.handle('agent:cancel', () => {
+  cancelCurrentTurn();
+});
+
+ipcMain.handle('agent:reset', () => {
+  resetSession();
 });
 
 app.whenReady().then(() => {
