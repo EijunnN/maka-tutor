@@ -1,6 +1,8 @@
 import { app } from 'electron';
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { detectDomain } from './harness/domains';
+import { indexConversation, removeConversation } from './harness/memory';
 
 export interface PersistedScreenshot {
   path: string;
@@ -98,9 +100,30 @@ export async function loadConversation(id: string): Promise<Conversation | null>
   }
 }
 
+function detectConvDomain(conv: Conversation): string | null {
+  // Domain por la concatenación de los primeros 4 mensajes del usuario.
+  const userText = conv.messages
+    .filter((m) => m.role === 'user')
+    .slice(0, 4)
+    .map((m) => m.text)
+    .join(' ');
+  return detectDomain(userText)?.id ?? null;
+}
+
 export async function saveConversation(conv: Conversation): Promise<void> {
   await ensureDir();
   await writeFile(pathFor(conv.id), JSON.stringify(conv, null, 2), 'utf8');
+  // Re-index la conversación al guardar.
+  indexConversation(
+    conv.id,
+    detectConvDomain(conv),
+    conv.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      text: m.text,
+      createdAt: m.createdAt,
+    })),
+  );
 }
 
 export async function deleteConversation(id: string): Promise<void> {
@@ -108,5 +131,38 @@ export async function deleteConversation(id: string): Promise<void> {
     await unlink(pathFor(id));
   } catch {
     // ignore
+  }
+  removeConversation(id);
+}
+
+// Carga todas las conversaciones del disco al boot del proceso main
+// y las indexa para retrieval semántico. Llamar una vez después de
+// app.whenReady().
+export async function indexAllConversations(): Promise<void> {
+  await ensureDir();
+  let names: string[] = [];
+  try {
+    names = await readdir(dir());
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    if (!name.endsWith('.json')) continue;
+    try {
+      const raw = await readFile(join(dir(), name), 'utf8');
+      const conv = JSON.parse(raw) as Conversation;
+      indexConversation(
+        conv.id,
+        detectConvDomain(conv),
+        conv.messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          text: m.text,
+          createdAt: m.createdAt,
+        })),
+      );
+    } catch {
+      // skip corrupt
+    }
   }
 }

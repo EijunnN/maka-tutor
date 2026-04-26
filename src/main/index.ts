@@ -12,6 +12,7 @@ import {
 } from './settings';
 import {
   deleteConversation,
+  indexAllConversations,
   listConversations,
   loadConversation,
   saveConversation,
@@ -76,9 +77,13 @@ ipcMain.handle('settings:set-model', (_event, model: string) => {
   setModel(model);
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   applyApiKeyToEnv();
   registerShotProtocol();
+
+  // Indexa todas las conversaciones existentes para que el retrieval
+  // del harness empiece con memoria de los chats previos.
+  void indexAllConversations();
 
   mainWindow = createOverlayWindow();
 
