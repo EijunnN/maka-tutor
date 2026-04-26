@@ -39,6 +39,7 @@ export function getApiKey(): string | null {
 export function setApiKey(value: string | null): void {
   if (!value) {
     store.delete('encryptedApiKey');
+    delete process.env.ANTHROPIC_API_KEY;
     return;
   }
   if (!safeStorage.isEncryptionAvailable()) {
@@ -46,6 +47,7 @@ export function setApiKey(value: string | null): void {
   }
   const encrypted = safeStorage.encryptString(value);
   store.set('encryptedApiKey', encrypted.toString('base64'));
+  process.env.ANTHROPIC_API_KEY = value;
 }
 
 export function getModel(): string {

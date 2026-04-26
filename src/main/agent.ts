@@ -104,6 +104,22 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
 
   win.webContents.send('agent:turn-start');
 
+  // Watchdog: si en 15s no llega el primer mensaje del SDK, asumimos
+  // que el binario embebido no encontró credenciales (ni ANTHROPIC_API_KEY
+  // ni OAuth de claude login) y abortamos con un mensaje útil.
+  let firstMessageSeen = false;
+  let watchdogFired = false;
+  const watchdog = setTimeout(() => {
+    if (!firstMessageSeen) {
+      watchdogFired = true;
+      win.webContents.send('agent:error', {
+        message:
+          'El agente no respondió en 15s. Verifica que tienes una API key configurada en Ajustes (⚙) o que el CLI claude está logueado.',
+      });
+      abort.abort();
+    }
+  }, 15_000);
+
   try {
     const stream = query({
       prompt: promptStream(),
@@ -118,6 +134,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
     });
 
     for await (const msg of stream) {
+      firstMessageSeen = true;
       const m = msg as { type: string; subtype?: string; session_id?: string; message?: { content?: ContentBlock[] } };
 
       if (m.type === 'system' && m.subtype === 'init') {
@@ -144,16 +161,21 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
       }
     }
   } catch (err) {
-    const isAbort =
-      err instanceof Error && (err.name === 'AbortError' || /aborted/i.test(err.message));
-    if (isAbort) {
-      win.webContents.send('agent:turn-cancelled');
+    if (watchdogFired) {
+      // ya emitimos el error específico desde el watchdog, no duplicar
     } else {
-      console.error('[agent] turn failed', err);
-      const message = err instanceof Error ? err.message : String(err);
-      win.webContents.send('agent:error', { message });
+      const isAbort =
+        err instanceof Error && (err.name === 'AbortError' || /aborted/i.test(err.message));
+      if (isAbort) {
+        win.webContents.send('agent:turn-cancelled');
+      } else {
+        console.error('[agent] turn failed', err);
+        const message = err instanceof Error ? err.message : String(err);
+        win.webContents.send('agent:error', { message });
+      }
     }
   } finally {
+    clearTimeout(watchdog);
     if (currentAbort === abort) currentAbort = null;
   }
 }
