@@ -23,11 +23,27 @@ const api: ApiBridge = {
   setModel: (model) => ipcRenderer.invoke('settings:set-model', model),
 };
 
+// Un solo ipcRenderer.on por canal; los suscriptores se mantienen
+// en una Set local. Esto evita que el cleanup vía contextBridge falle
+// (las funciones devueltas por funciones expuestas no siempre liberan
+// el listener real, lo que duplica callbacks bajo React StrictMode).
+const channelHandlers = new Map<string, Set<(data: unknown) => void>>();
+
 function subscribe<T>(channel: string, cb: (data: T) => void): () => void {
-  const handler = (_e: IpcRendererEvent, data: T) => cb(data);
-  ipcRenderer.on(channel, handler);
+  let bucket = channelHandlers.get(channel);
+  if (!bucket) {
+    bucket = new Set();
+    channelHandlers.set(channel, bucket);
+    ipcRenderer.on(channel, (_e: IpcRendererEvent, data: unknown) => {
+      const handlers = channelHandlers.get(channel);
+      if (!handlers) return;
+      for (const h of handlers) h(data);
+    });
+  }
+  const handler = cb as (data: unknown) => void;
+  bucket.add(handler);
   return () => {
-    ipcRenderer.removeListener(channel, handler);
+    channelHandlers.get(channel)?.delete(handler);
   };
 }
 

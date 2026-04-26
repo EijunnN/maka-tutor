@@ -105,21 +105,21 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
 
   win.webContents.send('agent:turn-start');
 
-  // Watchdog: si en 15s no llega el primer mensaje del SDK, asumimos
-  // que el binario embebido no encontró credenciales (ni ANTHROPIC_API_KEY
-  // ni OAuth de claude login) y abortamos con un mensaje útil.
+  // Watchdog: si en 8s no llega el primer mensaje del SDK, asumimos
+  // que el binario no encontró credenciales y abortamos.
   let firstMessageSeen = false;
   let watchdogFired = false;
   const watchdog = setTimeout(() => {
     if (!firstMessageSeen) {
       watchdogFired = true;
+      console.error('[agent] watchdog fired — no SDK messages in 8s');
       win.webContents.send('agent:error', {
         message:
-          'El agente no respondió en 15s. Verifica que tienes una API key configurada en Ajustes (⚙) o que el CLI claude está logueado.',
+          'El agente no respondió en 8s. Mira la terminal de bun run dev: si hay líneas [claude stderr], ahí está la pista. Si no, configura una API key en Ajustes.',
       });
       abort.abort();
     }
-  }, 15_000);
+  }, 8_000);
 
   try {
     const userClaudeBin = findClaudeExecutable();
@@ -132,13 +132,22 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
         resume: lastSessionId,
         abortController: abort,
         settingSources: [],
+        stderr: (data: string) => {
+          console.error('[claude stderr]', data.trim());
+        },
         ...(userClaudeBin ? { pathToClaudeCodeExecutable: userClaudeBin } : {}),
       },
     });
 
     for await (const msg of stream) {
       firstMessageSeen = true;
-      const m = msg as { type: string; subtype?: string; session_id?: string; message?: { content?: ContentBlock[] } };
+      const m = msg as {
+        type: string;
+        subtype?: string;
+        session_id?: string;
+        message?: { content?: ContentBlock[] };
+        result?: string;
+      };
 
       if (m.type === 'system' && m.subtype === 'init') {
         if (typeof m.session_id === 'string') lastSessionId = m.session_id;

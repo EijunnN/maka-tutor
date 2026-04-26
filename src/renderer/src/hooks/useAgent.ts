@@ -33,15 +33,17 @@ export function useAgent() {
 
     const offMessage = window.events.onAgentMessage(({ text }) => {
       setStatus('streaming');
-      setMessages((prev) => {
-        const id = currentAssistantId.current;
-        if (id) {
-          return prev.map((m) => (m.id === id ? { ...m, text: m.text + text } : m));
-        }
-        const newId = nextId();
-        currentAssistantId.current = newId;
-        return [...prev, { id: newId, role: 'assistant', text, createdAt: Date.now() }];
-      });
+      const id = currentAssistantId.current;
+      if (id) {
+        // Mensajes adicionales del SDK en el mismo turno: sobreescribimos.
+        // (Evita el bug de StrictMode duplicando concatenaciones.)
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text } : m)));
+        return;
+      }
+      const newId = nextId();
+      currentAssistantId.current = newId;
+      const newMsg: ChatMessage = { id: newId, role: 'assistant', text, createdAt: Date.now() };
+      setMessages((prev) => [...prev, newMsg]);
     });
 
     const offEnd = window.events.onAgentTurnEnd(() => {
@@ -69,33 +71,36 @@ export function useAgent() {
     };
   }, []);
 
-  const send = useCallback(async (text: string, shots: ScreenshotEvent[]) => {
-    if (status !== 'idle') return;
-    const userMsg: ChatMessage = {
-      id: nextId(),
-      role: 'user',
-      text,
-      shots: shots.length > 0 ? shots : undefined,
-      createdAt: Date.now(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setError(null);
-    setStatus('thinking');
-    currentAssistantId.current = null;
+  const send = useCallback(
+    async (text: string, shots: ScreenshotEvent[]) => {
+      if (status !== 'idle') return;
+      const userMsg: ChatMessage = {
+        id: nextId(),
+        role: 'user',
+        text,
+        shots: shots.length > 0 ? shots : undefined,
+        createdAt: Date.now(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setError(null);
+      setStatus('thinking');
+      currentAssistantId.current = null;
 
-    const payload: SendTurnPayload = {
-      text,
-      screenshots: shots.map((s) => ({ path: s.path, width: s.width, height: s.height })),
-    };
+      const payload: SendTurnPayload = {
+        text,
+        screenshots: shots.map((s) => ({ path: s.path, width: s.width, height: s.height })),
+      };
 
-    try {
-      await window.api.sendTurn(payload);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      setStatus('idle');
-    }
-  }, [status]);
+      try {
+        await window.api.sendTurn(payload);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        setStatus('idle');
+      }
+    },
+    [status],
+  );
 
   const cancel = useCallback(async () => {
     await window.api.cancelTurn();
