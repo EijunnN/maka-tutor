@@ -151,7 +151,11 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
             aria-expanded={convOpen}
           >
             <MessageSquare size={13} className="shrink-0 text-zinc-500" strokeWidth={2} />
-            <span className="min-w-0 truncate text-[13px] font-medium">{activeTitle}</span>
+            <span className="min-w-0 truncate text-[13px] font-medium">
+              <span className="text-zinc-500">Maka Tutor</span>
+              <span className="mx-2 text-zinc-700">·</span>
+              <span className="text-zinc-100">{activeTitle}</span>
+            </span>
             <ChevronDown
               size={13}
               strokeWidth={2.2}

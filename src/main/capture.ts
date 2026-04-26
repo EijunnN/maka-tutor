@@ -44,7 +44,7 @@ async function getDisplaySource(displayId: number): Promise<{
 }
 
 async function savePng(buffer: Buffer): Promise<string> {
-  const dir = join(app.getPath('temp'), 'aprende-mierda', 'shots');
+  const dir = join(app.getPath('temp'), 'maka-tutor', 'shots');
   await mkdir(dir, { recursive: true });
   const fpath = join(dir, `shot-${Date.now()}.png`);
   await writeFile(fpath, buffer);

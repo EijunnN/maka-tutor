@@ -37,7 +37,7 @@ function MessageBubbleImpl({ message, streaming }: Props) {
 
   return (
     <div className="flex flex-col items-start">
-      <div className="prose-aprende max-w-[92%] text-sm text-zinc-200">
+      <div className="prose-maka max-w-[92%] text-sm text-zinc-200">
         {streaming ? (
           // Mientras streaming, render plano para evitar reparseo de
           // todo el árbol markdown por cada delta. Al terminar el

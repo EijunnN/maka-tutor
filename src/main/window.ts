@@ -21,7 +21,7 @@ export function createOverlayWindow(): BrowserWindow {
     skipTaskbar: true,
     hasShadow: false,
     autoHideMenuBar: true,
-    title: 'aprende-mierda',
+    title: 'Maka Tutor',
     backgroundColor: '#00000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

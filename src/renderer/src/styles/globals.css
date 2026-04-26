@@ -234,58 +234,58 @@ body {
 /* ============================================
    Markdown del asistente
    ============================================ */
-.prose-aprende > *:first-child {
+.prose-maka > *:first-child {
   margin-top: 0;
 }
-.prose-aprende > *:last-child {
+.prose-maka > *:last-child {
   margin-bottom: 0;
 }
 
-.prose-aprende p {
+.prose-maka p {
   margin: 0 0 0.6em;
   line-height: 1.6;
 }
 
-.prose-aprende strong {
+.prose-maka strong {
   color: rgb(244 244 245);
   font-weight: 600;
 }
 
-.prose-aprende em {
+.prose-maka em {
   color: rgb(212 212 216);
   font-style: italic;
 }
 
-.prose-aprende a {
+.prose-maka a {
   color: rgb(196 181 253);
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-color: rgba(167, 139, 250, 0.5);
 }
-.prose-aprende a:hover {
+.prose-maka a:hover {
   text-decoration-color: rgba(167, 139, 250, 0.9);
 }
 
-.prose-aprende ul,
-.prose-aprende ol {
+.prose-maka ul,
+.prose-maka ol {
   margin: 0 0 0.6em;
   padding-left: 1.25em;
 }
-.prose-aprende ul {
+.prose-maka ul {
   list-style: disc;
 }
-.prose-aprende ol {
+.prose-maka ol {
   list-style: decimal;
 }
-.prose-aprende li {
+.prose-maka li {
   margin: 0.2em 0;
   line-height: 1.55;
 }
-.prose-aprende li::marker {
+.prose-maka li::marker {
   color: rgba(167, 139, 250, 0.7);
 }
 
-.prose-aprende code:not(pre code) {
+.prose-maka code:not(pre code) {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.85em;
   padding: 0.12em 0.4em;
@@ -295,7 +295,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.prose-aprende pre {
+.prose-maka pre {
   margin: 0.7em 0;
   padding: 0.85em;
   border-radius: 12px;
@@ -306,7 +306,7 @@ body {
   font-size: 0.78rem;
   line-height: 1.55;
 }
-.prose-aprende pre code {
+.prose-maka pre code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   background: transparent;
   border: 0;
@@ -314,7 +314,7 @@ body {
   color: rgb(228 228 231);
 }
 
-.prose-aprende blockquote {
+.prose-maka blockquote {
   margin: 0.6em 0;
   padding-left: 0.85em;
   border-left: 2px solid rgba(167, 139, 250, 0.6);
@@ -322,43 +322,43 @@ body {
   font-style: italic;
 }
 
-.prose-aprende h1,
-.prose-aprende h2,
-.prose-aprende h3 {
+.prose-maka h1,
+.prose-maka h2,
+.prose-maka h3 {
   font-weight: 600;
   color: rgb(244 244 245);
   margin: 0.8em 0 0.3em;
   line-height: 1.3;
 }
-.prose-aprende h1 {
+.prose-maka h1 {
   font-size: 1.05rem;
 }
-.prose-aprende h2 {
+.prose-maka h2 {
   font-size: 1rem;
 }
-.prose-aprende h3 {
+.prose-maka h3 {
   font-size: 0.95rem;
 }
 
-.prose-aprende hr {
+.prose-maka hr {
   border: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   margin: 0.8em 0;
 }
 
-.prose-aprende table {
+.prose-maka table {
   border-collapse: collapse;
   width: 100%;
   margin: 0.6em 0;
   font-size: 0.85em;
 }
-.prose-aprende th,
-.prose-aprende td {
+.prose-maka th,
+.prose-maka td {
   border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 0.4em 0.6em;
   text-align: left;
 }
-.prose-aprende th {
+.prose-maka th {
   background: rgba(255, 255, 255, 0.04);
   font-weight: 600;
 }
