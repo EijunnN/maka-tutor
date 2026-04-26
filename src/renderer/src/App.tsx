@@ -4,7 +4,7 @@ import { ChatPanel } from './components/chat/ChatPanel';
 import { ChatPuck } from './components/chat/ChatPuck';
 import { useClickthrough } from './hooks/useClickthrough';
 import { useScreenshots } from './hooks/useScreenshots';
-import { useAgent } from './hooks/useAgent';
+import { useChat } from './hooks/useChat';
 
 export function App() {
   const [minimized, setMinimized] = useState(false);
@@ -17,7 +17,18 @@ export function App() {
 
   const interactive = useClickthrough(targetRef);
   const { shots, error: shotsError, remove, clear } = useScreenshots();
-  const { messages, status, error: agentError, send, cancel, reset } = useAgent();
+  const {
+    conversations,
+    activeId,
+    messages,
+    status,
+    error: agentError,
+    send,
+    cancel,
+    newChat,
+    openChat,
+    deleteChat,
+  } = useChat();
 
   const handleSend = useCallback(
     (text: string) => {
@@ -27,10 +38,6 @@ export function App() {
     },
     [send, shots, clear],
   );
-
-  const handleReset = useCallback(() => {
-    void reset();
-  }, [reset]);
 
   return (
     <>
@@ -53,7 +60,11 @@ export function App() {
           status={status}
           onSend={handleSend}
           onCancel={cancel}
-          onReset={handleReset}
+          conversations={conversations}
+          activeId={activeId}
+          onNewChat={() => void newChat()}
+          onOpenChat={(id) => void openChat(id)}
+          onDeleteChat={(id) => void deleteChat(id)}
           onMinimize={() => setMinimized(true)}
           onClose={() => window.api.quit()}
           onOpenSettings={() => setSettingsOpen(true)}

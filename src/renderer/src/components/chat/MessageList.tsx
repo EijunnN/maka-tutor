@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { AgentStatus, ChatMessage } from '../../hooks/useAgent';
+import type { AgentStatus, ChatMessage } from '../../hooks/useChat';
 import { MessageBubble } from './MessageBubble';
 
 interface Props {
@@ -18,7 +18,7 @@ export function MessageList({ messages, status }: Props) {
     [...messages].reverse().find((m) => m.role === 'assistant') ?? null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+    <div className="scrollbar-hidden flex h-full flex-col gap-6 overflow-y-auto pr-1">
       {messages.map((m) => (
         <MessageBubble
           key={m.id}

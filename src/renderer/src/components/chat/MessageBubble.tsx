@@ -1,6 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ChatMessage } from '../../hooks/useAgent';
+import type { ChatMessage } from '../../hooks/useChat';
 
 interface Props {
   message: ChatMessage;

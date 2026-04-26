@@ -1,86 +1,105 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Send, Square } from 'lucide-react';
-import type { AgentStatus } from '../../hooks/useAgent';
+import type { AgentStatus } from '../../hooks/useChat';
 
-interface Props {
+interface ComposerProps {
   status: AgentStatus;
-  hasShots: boolean;
   onSend: (text: string) => void;
   onCancel: () => void;
+  shotsCount: number;
+  hasMessages: boolean;
 }
 
-export function Composer({ status, hasShots, onSend, onCancel }: Props) {
-  const [text, setText] = useState('');
-  const taRef = useRef<HTMLTextAreaElement>(null);
+const MAX_HEIGHT = 160;
 
-  const busy = status !== 'idle';
-  const canSend = !busy && (text.trim().length > 0 || hasShots);
+export function Composer({ status, onSend, onCancel, shotsCount, hasMessages }: ComposerProps) {
+  const [value, setValue] = useState('');
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const isBusy = status === 'thinking' || status === 'streaming';
+  const canSend = !isBusy && value.trim().length > 0;
 
   useEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = '0px';
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
-  }, [text]);
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+  }, [value]);
 
-  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const submit = () => {
+    if (!canSend) return;
+    onSend(value.trim());
+    setValue('');
+    requestAnimationFrame(() => {
+      const el = taRef.current;
+      if (el) el.style.height = 'auto';
+    });
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!canSend) return;
-      onSend(text);
-      setText('');
+      submit();
     }
   };
 
-  const handleSend = () => {
-    if (busy) {
-      onCancel();
-      return;
-    }
-    if (!canSend) return;
-    onSend(text);
-    setText('');
-  };
+  let hint: React.ReactNode;
+  if (isBusy) {
+    hint = <span className="animate-pulse text-violet-300/70">Pensando…</span>;
+  } else if (shotsCount > 0) {
+    hint = (
+      <span className="text-zinc-400">
+        {shotsCount} captura{shotsCount === 1 ? '' : 's'} adjunta
+        {shotsCount === 1 ? '' : 's'}
+      </span>
+    );
+  } else if (hasMessages) {
+    hint = (
+      <span className="text-zinc-500">
+        <kbd className="text-zinc-400">⏎</kbd> enviar ·{' '}
+        <kbd className="text-zinc-400">⇧⏎</kbd> nueva línea
+      </span>
+    );
+  } else {
+    hint = (
+      <span className="text-zinc-500">
+        <kbd className="text-zinc-400">Ctrl⇧Space</kbd> capturar pantalla
+      </span>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] transition-colors duration-200 focus-within:border-violet-400/40 focus-within:bg-white/[0.04]">
-      <div className="px-4 pt-3.5">
+    <div className="px-5 pb-3 pt-4">
+      <div className="flex items-end gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 transition-colors duration-150 focus-within:border-violet-400/40 focus-within:bg-white/[0.035]">
         <textarea
           ref={taRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
           rows={1}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={
-            hasShots
-              ? 'Pregunta sobre lo que capturaste…'
-              : 'Pregúntame sobre lo que tienes en pantalla…'
-          }
-          className="w-full resize-none bg-transparent text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 outline-none"
-          style={{ maxHeight: 140 }}
+          placeholder={isBusy ? 'Esperando respuesta…' : 'Pregunta lo que quieras…'}
+          className="scrollbar-hidden min-h-6 max-h-[160px] flex-1 resize-none bg-transparent text-base leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600"
+          aria-label="Mensaje"
         />
-      </div>
-      <div className="flex items-center justify-between px-3 pb-2.5 pt-3">
-        <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
-          <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Ctrl</span>
-          <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
-          <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Space</span>
-        </kbd>
+
         <button
           type="button"
-          onClick={handleSend}
-          disabled={!busy && !canSend}
-          aria-label={busy ? 'Detener' : 'Enviar mensaje'}
-          className={`flex size-8 items-center justify-center rounded-full transition-all duration-150 disabled:cursor-not-allowed ${
-            busy
-              ? 'bg-rose-500/90 text-white hover:bg-rose-400'
+          onClick={isBusy ? onCancel : submit}
+          disabled={!isBusy && !canSend}
+          className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 ${
+            isBusy
+              ? 'bg-rose-500/90 text-white shadow-[0_0_0_1px_rgba(244,63,94,0.4)] hover:bg-rose-500'
               : canSend
-                ? 'bg-violet-500 text-white hover:bg-violet-400 hover:shadow-[0_0_20px_-2px_rgba(139,92,246,0.5)]'
-                : 'bg-white/5 text-zinc-600'
+                ? 'bg-violet-500 text-white shadow-[0_0_0_1px_rgba(167,139,250,0.4)] hover:bg-violet-400'
+                : 'bg-white/[0.05] text-zinc-600'
           }`}
+          aria-label={isBusy ? 'Cancelar' : 'Enviar'}
         >
-          {busy ? <Square size={12} strokeWidth={2.5} fill="currentColor" /> : <Send size={14} strokeWidth={2} />}
+          {isBusy ? <Square size={13} strokeWidth={2.4} fill="currentColor" /> : <Send size={14} strokeWidth={2.2} />}
         </button>
+      </div>
+
+      <div className="mt-1.5 flex items-center justify-between px-1 text-[11px]">
+        <div>{hint}</div>
       </div>
     </div>
   );

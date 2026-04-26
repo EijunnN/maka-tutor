@@ -1,10 +1,22 @@
-import { forwardRef } from 'react';
-import { X, Minus, Sparkles, Camera, ScanLine, RotateCcw, Settings } from 'lucide-react';
-import type { ScreenshotEvent } from '@shared/types';
-import type { AgentStatus, ChatMessage } from '../../hooks/useAgent';
-import { ScreenshotPreview } from './ScreenshotPreview';
+import { forwardRef, useEffect, useRef, useState } from 'react';
+import {
+  X,
+  Minus,
+  Settings,
+  Sparkles,
+  Camera,
+  ScanLine,
+  MessageSquare,
+  ChevronDown,
+  Trash2,
+  Plus,
+  Eye,
+} from 'lucide-react';
+import type { ConversationMeta, ScreenshotEvent } from '@shared/types';
+import type { AgentStatus, ChatMessage } from '../../hooks/useChat';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
+import { ScreenshotPreview } from './ScreenshotPreview';
 import { SettingsDialog } from '../settings/SettingsDialog';
 
 interface ChatPanelProps {
@@ -13,11 +25,18 @@ interface ChatPanelProps {
   onRemoveShot: (path: string) => void;
   shotsError: string | null;
   agentError: string | null;
+
   messages: ChatMessage[];
   status: AgentStatus;
   onSend: (text: string) => void;
   onCancel: () => void;
-  onReset: () => void;
+
+  conversations: ConversationMeta[];
+  activeId: string;
+  onNewChat: () => void;
+  onOpenChat: (id: string) => void;
+  onDeleteChat: (id: string) => void;
+
   onMinimize: () => void;
   onClose: () => void;
   onOpenSettings: () => void;
@@ -25,141 +44,329 @@ interface ChatPanelProps {
   onCloseSettings: () => void;
 }
 
-export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
-  (
-    {
-      interactive,
-      shots,
-      onRemoveShot,
-      shotsError,
-      agentError,
-      messages,
-      status,
-      onSend,
-      onCancel,
-      onReset,
-      onMinimize,
-      onClose,
-      onOpenSettings,
-      settingsOpen,
-      onCloseSettings,
-    },
-    ref,
-  ) => {
-    const borderClass = interactive ? 'border-violet-400/25' : 'border-white/10';
-    const shadowClass = interactive
-      ? 'shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_0_1px_rgba(139,92,246,0.08),0_8px_40px_-8px_rgba(139,92,246,0.25)]'
-      : 'shadow-[0_24px_70px_rgba(0,0,0,0.7)]';
+function timeAgo(ts: number): string {
+  const diffMs = Date.now() - ts;
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return 'ahora';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `hace ${min}min`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `hace ${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return 'ayer';
+  if (day < 7) return `hace ${day}d`;
+  const d = new Date(ts);
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
 
-    const hasMessages = messages.length > 0;
-    const error = agentError ?? shotsError;
+export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function ChatPanel(
+  {
+    interactive,
+    shots,
+    onRemoveShot,
+    shotsError,
+    agentError,
+    messages,
+    status,
+    onSend,
+    onCancel,
+    conversations,
+    activeId,
+    onNewChat,
+    onOpenChat,
+    onDeleteChat,
+    onMinimize,
+    onClose,
+    onOpenSettings,
+    settingsOpen,
+    onCloseSettings,
+  },
+  ref,
+) {
+  const [convOpen, setConvOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
-    return (
-      <div
-        ref={ref}
-        className={`animate-panel-enter pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[580px] w-[440px] flex-col overflow-hidden rounded-3xl border ${borderClass} bg-neutral-950/95 backdrop-blur-xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-300 ${shadowClass}`}
-      >
-        <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-          <span className="text-sm font-medium tracking-tight text-zinc-100">aprende</span>
-          <div className="flex items-center gap-0.5">
-            {hasMessages && (
+  const activeConv = conversations.find((c) => c.id === activeId);
+  const activeTitle = activeConv?.title?.trim() || 'Nueva conversación';
+  const isBusy = status === 'thinking' || status === 'streaming';
+
+  useEffect(() => {
+    if (!convOpen) return;
+    function onDocMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
+      ) {
+        setConvOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setConvOpen(false);
+    }
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [convOpen]);
+
+  const handlePickConv = (id: string) => {
+    onOpenChat(id);
+    setConvOpen(false);
+  };
+
+  const handleNew = () => {
+    onNewChat();
+    setConvOpen(false);
+  };
+
+  const borderClass = interactive ? 'border-violet-400/25' : 'border-white/[0.06]';
+  const shadowClass = interactive
+    ? 'shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_0_1px_rgba(139,92,246,0.08),0_8px_40px_-8px_rgba(139,92,246,0.25)]'
+    : 'shadow-[0_24px_70px_-12px_rgba(0,0,0,0.75)]';
+
+  return (
+    <div
+      ref={ref}
+      className={`pointer-events-auto animate-panel-enter fixed bottom-6 right-6 z-20 flex h-[760px] w-[560px] flex-col overflow-hidden rounded-2xl border bg-neutral-950/95 backdrop-blur-xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-300 ${borderClass} ${shadowClass}`}
+    >
+      <header className="relative flex items-center justify-between gap-2 border-b border-white/[0.05] bg-white/[0.015] px-3 py-2.5">
+        <div className="relative min-w-0 flex-1">
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setConvOpen((v) => !v)}
+            className={`group flex max-w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-zinc-200 transition-colors duration-150 hover:bg-white/[0.04] active:bg-white/[0.06] ${
+              convOpen ? 'bg-white/[0.04]' : ''
+            }`}
+            aria-haspopup="listbox"
+            aria-expanded={convOpen}
+          >
+            <MessageSquare size={13} className="shrink-0 text-zinc-500" strokeWidth={2} />
+            <span className="min-w-0 truncate text-[13px] font-medium">{activeTitle}</span>
+            <ChevronDown
+              size={13}
+              strokeWidth={2.2}
+              className={`shrink-0 text-zinc-500 transition-transform duration-200 ${
+                convOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {convOpen && (
+            <div
+              ref={popoverRef}
+              className="animate-popover-enter absolute left-0 top-full z-30 mt-1.5 flex max-h-[340px] w-[340px] origin-top-left flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-neutral-950/[0.98] shadow-[0_18px_50px_-8px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+              role="listbox"
+            >
               <button
                 type="button"
-                onClick={onReset}
-                aria-label="Nueva conversación"
-                title="Nueva conversación"
-                className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+                onClick={handleNew}
+                className="flex items-center gap-2.5 border-b border-white/[0.05] px-3 py-2.5 text-[13px] font-medium text-zinc-100 transition-colors duration-150 hover:bg-violet-400/[0.08] active:bg-violet-400/[0.12]"
               >
-                <RotateCcw size={14} strokeWidth={2} />
+                <span className="flex size-5 items-center justify-center rounded-md bg-violet-400/15 text-violet-300">
+                  <Plus size={13} strokeWidth={2.4} />
+                </span>
+                Nueva conversación
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              aria-label="Ajustes"
-              title="Ajustes"
-              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
-            >
-              <Settings size={14} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={onMinimize}
-              aria-label="Minimizar"
-              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
-            >
-              <Minus size={14} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Cerrar"
-              className="rounded-lg p-1.5 text-zinc-500 transition-colors duration-150 hover:bg-white/5 hover:text-zinc-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
-            >
-              <X size={14} strokeWidth={2} />
-            </button>
-          </div>
-        </header>
 
-        {hasMessages ? (
-          <MessageList messages={messages} status={status} />
+              <div className="scrollbar-hidden flex-1 overflow-y-auto py-1">
+                {conversations.length === 0 ? (
+                  <div className="px-3 py-8 text-center text-[12px] text-zinc-500">
+                    Aún no hay conversaciones
+                  </div>
+                ) : (
+                  conversations.map((c) => {
+                    const isActive = c.id === activeId;
+                    const title = c.title?.trim() || 'Sin título';
+                    return (
+                      <div
+                        key={c.id}
+                        role="option"
+                        aria-selected={isActive}
+                        className={`group relative mx-1 my-0.5 flex cursor-pointer select-none items-center gap-2 rounded-lg py-2 pl-3 pr-1.5 transition-colors duration-150 ${
+                          isActive ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]'
+                        }`}
+                        onClick={() => handlePickConv(c.id)}
+                      >
+                        {isActive && (
+                          <span className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-r bg-violet-400" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] leading-tight text-zinc-100">
+                            {title}
+                          </div>
+                          <div className="mt-0.5 truncate text-[11px] text-zinc-500">
+                            {c.messageCount} {c.messageCount === 1 ? 'mensaje' : 'mensajes'} ·{' '}
+                            {timeAgo(c.updatedAt)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteChat(c.id);
+                          }}
+                          className="flex size-7 shrink-0 items-center justify-center rounded-md text-zinc-500 opacity-0 transition-all duration-150 hover:bg-white/[0.05] hover:text-rose-300 focus:opacity-100 group-hover:opacity-100"
+                          aria-label="Eliminar conversación"
+                        >
+                          <Trash2 size={12} strokeWidth={2} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="flex size-7 items-center justify-center rounded-md text-zinc-500 transition-colors duration-150 hover:bg-white/[0.05] hover:text-zinc-200"
+            aria-label="Ajustes"
+          >
+            <Settings size={14} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={onMinimize}
+            className="flex size-7 items-center justify-center rounded-md text-zinc-500 transition-colors duration-150 hover:bg-white/[0.05] hover:text-zinc-200"
+            aria-label="Minimizar"
+          >
+            <Minus size={14} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-7 items-center justify-center rounded-md text-zinc-500 transition-colors duration-150 hover:bg-white/[0.05] hover:text-rose-300"
+            aria-label="Cerrar"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col">
+        {messages.length === 0 ? (
+          <EmptyState />
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center px-8">
-            <div className="relative mb-5 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/10 ring-1 ring-inset ring-white/10">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-400/10 to-transparent blur-xl" />
-              <Sparkles size={20} strokeWidth={2} className="relative text-violet-300" />
-            </div>
-            <h2 className="text-base font-medium tracking-tight text-zinc-100">
-              Listo para enseñarte
-            </h2>
-            <p className="mt-1.5 text-center text-xs leading-relaxed text-zinc-500">
-              Captura tu pantalla y dime qué quieres aprender
-            </p>
+          <div className="min-h-0 flex-1 overflow-hidden px-5 py-5">
+            <MessageList messages={messages} status={status} />
+          </div>
+        )}
+      </div>
 
-            <div className="mt-6 flex w-full max-w-[300px] flex-col gap-1.5">
-              <div className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/5">
-                <Camera size={14} strokeWidth={2} className="text-zinc-400" />
-                <span className="flex-1 text-xs text-zinc-300">Capturar pantalla completa</span>
-                <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Ctrl</span>
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Space</span>
-                </kbd>
-              </div>
-              <div className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/5">
-                <ScanLine size={14} strokeWidth={2} className="text-zinc-400" />
-                <span className="flex-1 text-xs text-zinc-300">Recortar área</span>
-                <kbd className="flex items-center gap-1 font-mono text-[10px] tracking-tight text-zinc-500">
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">Ctrl</span>
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">⇧</span>
-                  <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5">A</span>
-                </kbd>
-              </div>
-            </div>
+      <div className="border-t border-white/[0.05] bg-white/[0.015]">
+        {agentError && (
+          <div className="mx-5 mt-3 rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-[12px] text-rose-200">
+            {agentError}
+          </div>
+        )}
+        {shotsError && (
+          <div className="mx-5 mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-[12px] text-amber-200">
+            {shotsError}
+          </div>
+        )}
+        {shots.length > 0 && (
+          <div className="px-5 pt-3">
+            <ScreenshotPreview shots={shots} onRemove={onRemoveShot} />
           </div>
         )}
 
-        <div className="flex flex-col gap-2 px-4 pb-4 pt-2">
-          {error && (
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
-              {error}
-            </div>
-          )}
+        <Composer
+          status={status}
+          onSend={onSend}
+          onCancel={onCancel}
+          shotsCount={shots.length}
+          hasMessages={messages.length > 0}
+        />
 
-          {shots.length > 0 && <ScreenshotPreview shots={shots} onRemove={onRemoveShot} />}
-
-          <Composer
-            status={status}
-            hasShots={shots.length > 0}
-            onSend={onSend}
-            onCancel={onCancel}
-          />
+        <div className="flex items-center justify-between border-t border-white/[0.04] px-5 py-1.5 text-[11px]">
+          <span className="text-zinc-600">Sonnet 4.5</span>
+          <span className="text-zinc-600">
+            {isBusy ? <span className="animate-pulse text-violet-300/70">Procesando…</span> : ''}
+          </span>
         </div>
-
-        <SettingsDialog open={settingsOpen} onClose={onCloseSettings} />
       </div>
-    );
-  },
-);
 
-ChatPanel.displayName = 'ChatPanel';
+      <SettingsDialog open={settingsOpen} onClose={onCloseSettings} />
+    </div>
+  );
+});
+
+function EmptyState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-8 py-10 text-center">
+      <div className="relative mb-5">
+        <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-xl" />
+        <div className="relative flex size-12 items-center justify-center rounded-full border border-violet-400/20 bg-violet-400/10">
+          <Sparkles size={22} className="text-violet-300" strokeWidth={1.8} />
+        </div>
+      </div>
+      <h2 className="text-lg font-medium tracking-tight text-zinc-100">
+        ¿Qué quieres aprender hoy?
+      </h2>
+      <p className="mt-1.5 max-w-[340px] text-sm leading-relaxed text-zinc-500">
+        Captura algo de tu pantalla o escribe directamente. Yo te lo explico.
+      </p>
+
+      <div className="mt-7 w-full max-w-[380px] space-y-1.5">
+        <ActionRow icon={<Camera size={16} strokeWidth={1.8} />} label="Capturar pantalla">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>⇧</Kbd>
+          <Kbd>Space</Kbd>
+        </ActionRow>
+        <ActionRow icon={<ScanLine size={16} strokeWidth={1.8} />} label="Recortar área">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>⇧</Kbd>
+          <Kbd>A</Kbd>
+        </ActionRow>
+        <ActionRow icon={<Eye size={16} strokeWidth={1.8} />} label="Mostrar / ocultar app">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>⇧</Kbd>
+          <Kbd>H</Kbd>
+        </ActionRow>
+        <ActionRow icon={<MessageSquare size={16} strokeWidth={1.8} />} label="Nueva conversación">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>L</Kbd>
+        </ActionRow>
+      </div>
+    </div>
+  );
+}
+
+function ActionRow({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-white/[0.04] bg-white/[0.02] px-4 py-3 transition-colors duration-150 hover:bg-white/[0.035]">
+      <span className="flex size-7 items-center justify-center rounded-md bg-white/[0.04] text-zinc-300">
+        {icon}
+      </span>
+      <span className="flex-1 text-left text-sm text-zinc-200">{label}</span>
+      <span className="flex items-center gap-1">{children}</span>
+    </div>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-white/[0.08] bg-white/[0.06] px-1.5 py-0.5 text-[10.5px] font-medium text-zinc-300 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]">
+      {children}
+    </kbd>
+  );
+}
