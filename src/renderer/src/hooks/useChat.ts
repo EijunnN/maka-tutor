@@ -50,7 +50,11 @@ export function useChat() {
   const createdAtRef = useRef<number>(Date.now());
 
   const currentAssistantId = useRef<string | null>(null);
-  const pendingDelta = useRef('');
+  // Smooth streaming: el modelo manda chunks de varias palabras de golpe,
+  // pero queremos pintar char-a-char a ritmo de lectura. Mantenemos una
+  // cola y un loop RAF que drena con velocidad adaptativa según backlog.
+  const charBuffer = useRef('');
+  const displayedLen = useRef(0);
   const flushRaf = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,16 +63,33 @@ export function useChat() {
     setConversations(list);
   }, []);
 
-  const flushDeltas = useCallback(() => {
+  const drainChars = useCallback(() => {
     flushRaf.current = 0;
-    const text = pendingDelta.current;
-    pendingDelta.current = '';
-    if (!text) return;
+    const buffer = charBuffer.current;
     const id = currentAssistantId.current;
-    if (!id) return;
+    if (!buffer.length || !id) return;
+
+    // Velocidad adaptativa: ~60 chars/s en cola corta (ritmo lectura),
+    // y catch-up agresivo si llegó un burst grande (modelo respondió
+    // rapidísimo o se acumuló por throttling de pestaña).
+    const backlog = buffer.length;
+    const chunkSize =
+      backlog > 400 ? Math.ceil(backlog / 8)
+      : backlog > 100 ? 4
+      : backlog > 30 ? 2
+      : 1;
+
+    const chunk = buffer.slice(0, chunkSize);
+    charBuffer.current = buffer.slice(chunkSize);
+    displayedLen.current += chunk.length;
+
     setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, text: m.text + text } : m)),
+      prev.map((m) => (m.id === id ? { ...m, text: m.text + chunk } : m)),
     );
+
+    if (charBuffer.current.length > 0) {
+      flushRaf.current = requestAnimationFrame(drainChars);
+    }
   }, []);
 
   // Listeners de eventos del agente
@@ -78,7 +99,8 @@ export function useChat() {
       setError(null);
       const id = nextId();
       currentAssistantId.current = id;
-      pendingDelta.current = '';
+      charBuffer.current = '';
+      displayedLen.current = 0;
       const placeholder: ChatMessage = {
         id,
         role: 'assistant',
@@ -90,40 +112,81 @@ export function useChat() {
 
     const offDelta = window.events.onAgentDelta(({ text }) => {
       setStatus('streaming');
-      pendingDelta.current += text;
-      if (flushRaf.current) return;
-      flushRaf.current = requestAnimationFrame(flushDeltas);
+      charBuffer.current += text;
+      if (!flushRaf.current) {
+        flushRaf.current = requestAnimationFrame(drainChars);
+      }
     });
 
     const offFinal = window.events.onAgentFinal(({ text }) => {
-      if (flushRaf.current) {
-        cancelAnimationFrame(flushRaf.current);
-        flushRaf.current = 0;
-      }
-      pendingDelta.current = '';
       const id = currentAssistantId.current;
       if (!id) return;
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, text } : m)),
-      );
+      // El "final" puede llegar mientras el buffer todavía se está
+      // drenando. Reconciliamos: si lo mostrado + lo pendiente no
+      // coincide con el final, el resto del final pasa a buffer.
+      // Si el final es más corto que lo mostrado (caso raro de
+      // corrección), truncamos directo.
+      if (text.length >= displayedLen.current) {
+        charBuffer.current = text.slice(displayedLen.current);
+        if (charBuffer.current.length > 0 && !flushRaf.current) {
+          flushRaf.current = requestAnimationFrame(drainChars);
+        }
+      } else {
+        if (flushRaf.current) {
+          cancelAnimationFrame(flushRaf.current);
+          flushRaf.current = 0;
+        }
+        charBuffer.current = '';
+        displayedLen.current = text.length;
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, text } : m)),
+        );
+      }
     });
 
     const offEnd = window.events.onAgentTurnEnd((evt) => {
       if (evt.sessionId) sessionIdRef.current = evt.sessionId;
+      // Si quedan chars en el buffer al cerrar el turno, los volcamos
+      // de una vez para no dejar la animación huérfana mientras el
+      // status pasa a idle.
+      if (charBuffer.current.length > 0) {
+        const id = currentAssistantId.current;
+        const tail = charBuffer.current;
+        charBuffer.current = '';
+        displayedLen.current += tail.length;
+        if (id) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, text: m.text + tail } : m)),
+          );
+        }
+      }
+      if (flushRaf.current) {
+        cancelAnimationFrame(flushRaf.current);
+        flushRaf.current = 0;
+      }
       currentAssistantId.current = null;
-      pendingDelta.current = '';
       setStatus('idle');
     });
 
     const offCancelled = window.events.onAgentTurnCancelled(() => {
+      if (flushRaf.current) {
+        cancelAnimationFrame(flushRaf.current);
+        flushRaf.current = 0;
+      }
       currentAssistantId.current = null;
-      pendingDelta.current = '';
+      charBuffer.current = '';
+      displayedLen.current = 0;
       setStatus('idle');
     });
 
     const offError = window.events.onAgentError(({ message }) => {
+      if (flushRaf.current) {
+        cancelAnimationFrame(flushRaf.current);
+        flushRaf.current = 0;
+      }
       currentAssistantId.current = null;
-      pendingDelta.current = '';
+      charBuffer.current = '';
+      displayedLen.current = 0;
       setStatus('idle');
       setError(message);
     });
@@ -137,7 +200,7 @@ export function useChat() {
       offError();
       if (flushRaf.current) cancelAnimationFrame(flushRaf.current);
     };
-  }, [flushDeltas]);
+  }, [drainChars]);
 
   // Cargar lista al montar
   useEffect(() => {
@@ -227,7 +290,8 @@ export function useChat() {
     titleRef.current = 'Nueva conversación';
     createdAtRef.current = Date.now();
     currentAssistantId.current = null;
-    pendingDelta.current = '';
+    charBuffer.current = '';
+    displayedLen.current = 0;
     setMessages([]);
     setError(null);
     setStatus('idle');
@@ -245,7 +309,8 @@ export function useChat() {
       titleRef.current = conv.title;
       createdAtRef.current = conv.createdAt;
       currentAssistantId.current = null;
-      pendingDelta.current = '';
+      charBuffer.current = '';
+      displayedLen.current = 0;
       setActiveId(conv.id);
       setMessages(
         conv.messages.map((m) => ({
