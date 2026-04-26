@@ -17,7 +17,6 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.119",
     "electron-store": "10",
     "lucide-react": "^1.11.0",
-    "mica-electron": "^1.5.17",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
