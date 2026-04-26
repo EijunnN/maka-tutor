@@ -1,4 +1,10 @@
-import { app, desktopCapturer, screen, type NativeImage } from 'electron';
+import {
+  app,
+  desktopCapturer,
+  nativeImage,
+  screen,
+  type NativeImage,
+} from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -54,24 +60,24 @@ export async function captureMonitorAtCursor(): Promise<CaptureResult> {
   return { path, width: size.width, height: size.height, displayId: display.id };
 }
 
-export async function captureRegion(
+export async function cropCapturedRegion(
+  capturedPath: string,
   displayId: number,
   rect: CaptureRect,
 ): Promise<CaptureResult> {
-  const { thumbnail, display } = await getDisplaySource(displayId);
+  const display =
+    screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay();
   const scale = display.scaleFactor;
+
+  const img = nativeImage.createFromPath(capturedPath);
+  if (img.isEmpty()) throw new Error(`Could not read captured image at ${capturedPath}`);
 
   const cropX = Math.max(0, Math.round(rect.x * scale));
   const cropY = Math.max(0, Math.round(rect.y * scale));
   const cropW = Math.max(1, Math.round(rect.width * scale));
   const cropH = Math.max(1, Math.round(rect.height * scale));
 
-  const cropped = thumbnail.crop({
-    x: cropX,
-    y: cropY,
-    width: cropW,
-    height: cropH,
-  });
+  const cropped = img.crop({ x: cropX, y: cropY, width: cropW, height: cropH });
   const path = await savePng(cropped.toPNG());
   const size = cropped.getSize();
   return { path, width: size.width, height: size.height, displayId };

@@ -74,7 +74,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
               <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-zinc-200">
                 Ctrl+Shift+A
               </kbd>{' '}
-              — selecciona un área (próximamente).
+              — selecciona un área de la pantalla (estilo recortes).
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, protocol } from 'electron';
 import { createOverlayWindow } from './window';
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { pathToShotUrl, registerShotProtocol, SHOT_SCHEME } from './protocol';
+import { openSelectionWindow } from './selectionWindow';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -32,7 +33,7 @@ app.whenReady().then(() => {
     getMainWindow: () => mainWindow,
     pathToShotUrl,
     onRegion: () => {
-      // Fase 3b: aquí abriremos la ventana de selección.
+      void openSelectionWindow({ mainWindow });
     },
   });
 
