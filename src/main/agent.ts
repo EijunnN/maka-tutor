@@ -132,6 +132,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
         resume: lastSessionId,
         abortController: abort,
         settingSources: [],
+        includePartialMessages: true,
         stderr: (data: string) => {
           console.error('[claude stderr]', data.trim());
         },
@@ -146,11 +147,20 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
         subtype?: string;
         session_id?: string;
         message?: { content?: ContentBlock[] };
+        event?: { type?: string; delta?: { type?: string; text?: string } };
         result?: string;
       };
 
       if (m.type === 'system' && m.subtype === 'init') {
         if (typeof m.session_id === 'string') lastSessionId = m.session_id;
+        continue;
+      }
+
+      if (m.type === 'stream_event' && m.event?.type === 'content_block_delta') {
+        const delta = m.event.delta;
+        if (delta?.type === 'text_delta' && typeof delta.text === 'string' && delta.text.length > 0) {
+          win.webContents.send('agent:assistant-delta', { text: delta.text });
+        }
         continue;
       }
 
@@ -160,7 +170,10 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
           .map((b) => b.text!)
           .join('');
         if (text.length > 0) {
-          win.webContents.send('agent:assistant-message', { text });
+          // Mensaje completo final del turno: lo emitimos para que el
+          // renderer pueda corregir el placeholder por si algún delta
+          // se perdió (el handler hace replace, no append).
+          win.webContents.send('agent:assistant-final', { text });
         }
         continue;
       }

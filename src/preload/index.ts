@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 import type {
   AgentErrorEvent,
   ApiBridge,
+  AssistantDeltaEvent,
   AssistantMessageEvent,
   EventsBridge,
   ScreenshotError,
@@ -51,7 +52,8 @@ const events: EventsBridge = {
   onScreenshot: (cb) => subscribe<ScreenshotEvent>('screenshot:captured', cb),
   onScreenshotError: (cb) => subscribe<ScreenshotError>('screenshot:error', cb),
   onAgentTurnStart: (cb) => subscribe<void>('agent:turn-start', () => cb()),
-  onAgentMessage: (cb) => subscribe<AssistantMessageEvent>('agent:assistant-message', cb),
+  onAgentDelta: (cb) => subscribe<AssistantDeltaEvent>('agent:assistant-delta', cb),
+  onAgentFinal: (cb) => subscribe<AssistantMessageEvent>('agent:assistant-final', cb),
   onAgentTurnEnd: (cb) => subscribe<TurnEndEvent>('agent:turn-end', cb),
   onAgentTurnCancelled: (cb) => subscribe<void>('agent:turn-cancelled', () => cb()),
   onAgentError: (cb) => subscribe<AgentErrorEvent>('agent:error', cb),

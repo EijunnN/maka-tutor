@@ -24,52 +24,94 @@ export function useAgent() {
   const [status, setStatus] = useState<AgentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const currentAssistantId = useRef<string | null>(null);
+  const pendingDelta = useRef('');
+  const flushRaf = useRef(0);
+
+  // Aplica los deltas acumulados al state. Llamado vía rAF para
+  // coalescer hasta el repaint (≤60fps), evitando re-renders frenéticos.
+  const flushDeltas = useCallback(() => {
+    flushRaf.current = 0;
+    const text = pendingDelta.current;
+    pendingDelta.current = '';
+    if (!text) return;
+    const id = currentAssistantId.current;
+    if (!id) return;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, text: m.text + text } : m)),
+    );
+  }, []);
 
   useEffect(() => {
     const offStart = window.events.onAgentTurnStart(() => {
       setStatus('thinking');
       setError(null);
+      // Crear placeholder del assistant en cuanto empieza el turno;
+      // los deltas posteriores van a este id.
+      const id = nextId();
+      currentAssistantId.current = id;
+      pendingDelta.current = '';
+      const placeholder: ChatMessage = {
+        id,
+        role: 'assistant',
+        text: '',
+        createdAt: Date.now(),
+      };
+      setMessages((prev) => [...prev, placeholder]);
     });
 
-    const offMessage = window.events.onAgentMessage(({ text }) => {
+    const offDelta = window.events.onAgentDelta(({ text }) => {
       setStatus('streaming');
-      const id = currentAssistantId.current;
-      if (id) {
-        // Mensajes adicionales del SDK en el mismo turno: sobreescribimos.
-        // (Evita el bug de StrictMode duplicando concatenaciones.)
-        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text } : m)));
-        return;
+      pendingDelta.current += text;
+      if (flushRaf.current) return;
+      flushRaf.current = requestAnimationFrame(flushDeltas);
+    });
+
+    // Texto completo del turno: lo usamos para corregir el placeholder
+    // por si algún delta se perdió. Sobrescribe el text del placeholder
+    // (idempotente).
+    const offFinal = window.events.onAgentFinal(({ text }) => {
+      // Vaciar deltas pendientes antes de overwrite
+      if (flushRaf.current) {
+        cancelAnimationFrame(flushRaf.current);
+        flushRaf.current = 0;
       }
-      const newId = nextId();
-      currentAssistantId.current = newId;
-      const newMsg: ChatMessage = { id: newId, role: 'assistant', text, createdAt: Date.now() };
-      setMessages((prev) => [...prev, newMsg]);
+      pendingDelta.current = '';
+      const id = currentAssistantId.current;
+      if (!id) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, text } : m)),
+      );
     });
 
     const offEnd = window.events.onAgentTurnEnd(() => {
       currentAssistantId.current = null;
+      pendingDelta.current = '';
       setStatus('idle');
     });
 
     const offCancelled = window.events.onAgentTurnCancelled(() => {
       currentAssistantId.current = null;
+      pendingDelta.current = '';
       setStatus('idle');
     });
 
     const offError = window.events.onAgentError(({ message }) => {
       currentAssistantId.current = null;
+      pendingDelta.current = '';
       setStatus('idle');
       setError(message);
     });
 
     return () => {
       offStart();
-      offMessage();
+      offDelta();
+      offFinal();
       offEnd();
       offCancelled();
       offError();
+      if (flushRaf.current) cancelAnimationFrame(flushRaf.current);
     };
-  }, []);
+  }, [flushDeltas]);
 
   const send = useCallback(
     async (text: string, shots: ScreenshotEvent[]) => {
@@ -88,7 +130,11 @@ export function useAgent() {
 
       const payload: SendTurnPayload = {
         text,
-        screenshots: shots.map((s) => ({ path: s.path, width: s.width, height: s.height })),
+        screenshots: shots.map((s) => ({
+          path: s.path,
+          width: s.width,
+          height: s.height,
+        })),
       };
 
       try {
@@ -112,6 +158,7 @@ export function useAgent() {
     setError(null);
     setStatus('idle');
     currentAssistantId.current = null;
+    pendingDelta.current = '';
   }, []);
 
   return { messages, status, error, send, cancel, reset };

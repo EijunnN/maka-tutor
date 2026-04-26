@@ -22,6 +22,10 @@ export interface AssistantMessageEvent {
   text: string;
 }
 
+export interface AssistantDeltaEvent {
+  text: string;
+}
+
 export interface TurnEndEvent {
   sessionId: string | undefined;
   subtype?: string;
@@ -35,7 +39,8 @@ export interface EventsBridge {
   onScreenshot: (cb: (data: ScreenshotEvent) => void) => () => void;
   onScreenshotError: (cb: (err: ScreenshotError) => void) => () => void;
   onAgentTurnStart: (cb: () => void) => () => void;
-  onAgentMessage: (cb: (msg: AssistantMessageEvent) => void) => () => void;
+  onAgentDelta: (cb: (msg: AssistantDeltaEvent) => void) => () => void;
+  onAgentFinal: (cb: (msg: AssistantMessageEvent) => void) => () => void;
   onAgentTurnEnd: (cb: (evt: TurnEndEvent) => void) => () => void;
   onAgentTurnCancelled: (cb: () => void) => () => void;
   onAgentError: (cb: (err: AgentErrorEvent) => void) => () => void;
