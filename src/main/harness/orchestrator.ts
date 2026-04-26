@@ -1,7 +1,13 @@
-import { detectDomain, loadDomain, touchDomain, type DomainProfile } from './domains';
+import { listDomains, touchDomain, type DomainProfile } from './domains';
 import { loadProfile, type UserProfile } from './profile';
 import { searchMemory, type MemoryHit } from './memory';
 import { getRelevantSkills, type Skill } from './skills';
+
+// Ventana de "sesión activa" para considerar un dominio vigente sin
+// nueva detección. Si el último dominio fue tocado hace más de esto,
+// arrancamos sin contexto de dominio y dejamos que el updater LLM
+// decida al cierre del primer turno.
+const ACTIVE_DOMAIN_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h
 
 const BASE_PROMPT = `Eres un tutor experto en software, productividad y herramientas digitales. El usuario te comparte screenshots de su pantalla y te pide que le enseñes a usar lo que está viendo o a hacer una tarea específica.
 
@@ -24,8 +30,15 @@ export interface TurnContext {
 
 export async function buildTurnContext(userText: string): Promise<TurnContext> {
   const profile = await loadProfile();
-  const detected = detectDomain(userText);
-  const domain = detected ? await loadDomain(detected.id) : null;
+  // El dominio activo es el último que tocamos, si está dentro de la
+  // ventana de frescura. La clasificación fina la hace el updater al
+  // cierre del turno (LLM-first); aquí solo inyectamos contexto
+  // cuando hay continuidad razonable.
+  const recent = await listDomains();
+  const candidate = recent[0];
+  const isFresh =
+    candidate && candidate.last_seen > 0 && Date.now() - candidate.last_seen < ACTIVE_DOMAIN_WINDOW_MS;
+  const domain: DomainProfile | null = isFresh ? candidate : null;
   if (domain) {
     await touchDomain(domain.id);
   }

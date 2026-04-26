@@ -2,7 +2,13 @@ import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { findClaudeExecutable } from '../claudePath';
 import { getModel } from '../settings';
 import { patchProfile, type UserProfile } from './profile';
-import { patchDomain, type DomainProfile } from './domains';
+import {
+  ensureDomain,
+  patchDomain,
+  slugifyDomainId,
+  touchDomain,
+  type DomainProfile,
+} from './domains';
 import { addSkill, reinforceSkills, weakenSkills, type Skill } from './skills';
 
 const UPDATER_SYSTEM = `Eres un actualizador de perfil + curador de playbooks pedagógicos de un alumno que está siendo tutorizado por otro agente.
@@ -12,6 +18,7 @@ Recibes el último turno (mensaje del usuario + respuesta del tutor) y opcionalm
 Devuelve EXCLUSIVAMENTE un JSON con este shape (sin texto antes o después, sin markdown, sin explicaciones):
 
 {
+  "domain": { "id": string, "display_name": string } | null,
   "profile_updates": {
     "level_general"?: "principiante" | "intermedio" | "avanzado" | "mixto",
     "explanation_style"?: string,
@@ -32,7 +39,16 @@ Devuelve EXCLUSIVAMENTE un JSON con este shape (sin texto antes o después, sin 
   }
 }
 
-Reglas profile/domain:
+Reglas dominio (TÚ clasificas):
+- "domain" identifica el tema/herramienta/disciplina concreta que se está aprendiendo en este turno.
+- "id" es un slug kebab-case ASCII corto y estable (ej: "blender", "power-bi", "calculo-diferencial", "derecho-laboral", "rust-async").
+- "display_name" es la forma legible para humanos (ej: "Blender", "Power BI", "Cálculo diferencial").
+- Si "Dominio actual" ya viene con un id y este turno SIGUE en el mismo tema, devuelve EXACTAMENTE ese mismo id (no inventes variantes).
+- Si el turno cambia claramente de tema, emite el nuevo dominio.
+- Si el turno es genérico, conversacional, o no hay tema identificable, devuelve "domain": null.
+- NO uses "general", "varios", "misceláneo" como id — prefiere null.
+
+Reglas profile/domain_updates:
 - Sé CONSERVADOR. Si no hay evidencia clara, devuelve {} (no inventes).
 - Solo añade items NUEVOS, no repitas los existentes.
 - "concepts_mastered" requiere evidencia de comprensión, no solo de explicación.
@@ -40,7 +56,7 @@ Reglas profile/domain:
 - "recurring_mistakes" solo si VIO un error específico del usuario.
 - "notes" para detalles de personalidad o preferencias mencionadas explícitamente.
 - "level" actualízalo solo con evidencia fuerte (varios turnos en ese nivel).
-- Si el dominio_id es null, omite "domain_updates" y "skill_updates" o devuelve {} en cada uno.
+- Si "domain" es null, omite "domain_updates" y "skill_updates" o devuelve {} en cada uno.
 
 Reglas skills (PLAYBOOKS PEDAGÓGICOS):
 - Una "skill" es un approach didáctico replicable: "cuando el usuario X (trigger), explicarle así (approach)".
@@ -71,6 +87,7 @@ interface SkillProposal {
 }
 
 interface UpdaterOutput {
+  domain?: { id?: string; display_name?: string } | null;
   profile_updates?: Partial<UserProfile>;
   domain_updates?: Partial<DomainProfile>;
   skill_updates?: {
@@ -222,6 +239,24 @@ export async function runUpdater(input: UpdaterInput): Promise<{
 
   const result: { profile?: UserProfile; domain?: DomainProfile } = {};
 
+  // Resolver dominio efectivo: el LLM manda authoritative; si no, mantener
+  // el que venía. Si el LLM emitió un id nuevo, lo creamos en disco aquí
+  // (ensureDomain) y lo "tocamos" para que el orchestrator del próximo
+  // turno lo considere el dominio activo.
+  let effectiveDomainId: string | null = input.domainId;
+  if (parsed.domain && parsed.domain.id && parsed.domain.display_name) {
+    const id = slugifyDomainId(parsed.domain.id);
+    if (id) {
+      try {
+        await ensureDomain(id, parsed.domain.display_name.trim());
+        await touchDomain(id);
+        effectiveDomainId = id;
+      } catch (err) {
+        console.warn('[updater] ensure/touch domain failed', err);
+      }
+    }
+  }
+
   if (parsed.profile_updates && Object.keys(parsed.profile_updates).length > 0) {
     try {
       result.profile = await patchProfile(parsed.profile_updates);
@@ -232,11 +267,11 @@ export async function runUpdater(input: UpdaterInput): Promise<{
 
   if (
     parsed.domain_updates &&
-    input.domainId &&
+    effectiveDomainId &&
     Object.keys(parsed.domain_updates).length > 0
   ) {
     try {
-      const domain = await patchDomain(input.domainId, parsed.domain_updates);
+      const domain = await patchDomain(effectiveDomainId, parsed.domain_updates);
       if (domain) result.domain = domain;
     } catch (err) {
       console.warn('[updater] patch domain failed', err);
@@ -245,14 +280,14 @@ export async function runUpdater(input: UpdaterInput): Promise<{
 
   // Skill updates SOLO si hay dominio (los playbooks viven por
   // dominio, no son globales).
-  if (input.domainId && parsed.skill_updates) {
+  if (effectiveDomainId && parsed.skill_updates) {
     const su = parsed.skill_updates;
     try {
       if (Array.isArray(su.reinforce_skill_ids) && su.reinforce_skill_ids.length > 0) {
-        await reinforceSkills(input.domainId, su.reinforce_skill_ids.slice(0, 2));
+        await reinforceSkills(effectiveDomainId, su.reinforce_skill_ids.slice(0, 2));
       }
       if (Array.isArray(su.weaken_skill_ids) && su.weaken_skill_ids.length > 0) {
-        await weakenSkills(input.domainId, su.weaken_skill_ids.slice(0, 2));
+        await weakenSkills(effectiveDomainId, su.weaken_skill_ids.slice(0, 2));
       }
       if (Array.isArray(su.new_skills) && su.new_skills.length > 0) {
         // Máx 1 skill nueva por turno para no inflar el inventario.
@@ -264,7 +299,7 @@ export async function runUpdater(input: UpdaterInput): Promise<{
           proposal.trigger.trim().length >= 3 &&
           proposal.approach.trim().length >= 5
         ) {
-          await addSkill(input.domainId, {
+          await addSkill(effectiveDomainId, {
             trigger: proposal.trigger,
             approach: proposal.approach,
             evidence: proposal.evidence,

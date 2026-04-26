@@ -1,7 +1,6 @@
 import { app } from 'electron';
 import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { detectDomain } from './harness/domains';
 import { indexConversation, removeConversation } from './harness/memory';
 
 export interface PersistedScreenshot {
@@ -100,23 +99,16 @@ export async function loadConversation(id: string): Promise<Conversation | null>
   }
 }
 
-function detectConvDomain(conv: Conversation): string | null {
-  // Domain por la concatenación de los primeros 4 mensajes del usuario.
-  const userText = conv.messages
-    .filter((m) => m.role === 'user')
-    .slice(0, 4)
-    .map((m) => m.text)
-    .join(' ');
-  return detectDomain(userText)?.id ?? null;
-}
-
 export async function saveConversation(conv: Conversation): Promise<void> {
   await ensureDir();
   await writeFile(pathFor(conv.id), JSON.stringify(conv, null, 2), 'utf8');
-  // Re-index la conversación al guardar.
+  // Re-index la conversación al guardar. Sin filtrado por dominio: el
+  // updater LLM clasifica el dominio de cada turno, pero la conversación
+  // como entidad ya no carga ese metadato (lo determina el orchestrator
+  // por ventana de frescura). El retrieval queda por relevancia textual.
   indexConversation(
     conv.id,
-    detectConvDomain(conv),
+    null,
     conv.messages.map((m) => ({
       id: m.id,
       role: m.role,
@@ -153,7 +145,7 @@ export async function indexAllConversations(): Promise<void> {
       const conv = JSON.parse(raw) as Conversation;
       indexConversation(
         conv.id,
-        detectConvDomain(conv),
+        null,
         conv.messages.map((m) => ({
           id: m.id,
           role: m.role,

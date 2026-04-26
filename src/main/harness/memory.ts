@@ -131,7 +131,11 @@ export function searchMemory(query: string, opts: SearchOptions = {}): MemoryHit
   const hits: MemoryHit[] = [];
   for (const messages of byConv.values()) {
     for (const m of messages) {
-      if (domain && m.domain !== domain) continue;
+      // Filtro de dominio "blando": si el mensaje tiene dominio asignado
+      // y no matchea, se descarta. Si el mensaje no tiene dominio (null),
+      // se acepta como complemento — útil mientras la indexación por
+      // dominio depende de un campo opcional en la conversación.
+      if (domain && m.domain && m.domain !== domain) continue;
       let score = 0;
       let overlap = 0;
       for (const qt of queryTokens) {
