@@ -25,18 +25,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(
         className={`animate-panel-enter pointer-events-auto fixed bottom-6 right-6 z-20 flex h-[580px] w-[440px] flex-col overflow-hidden rounded-3xl border ${borderClass} bg-neutral-950/95 backdrop-blur-xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-300 ${shadowClass}`}
       >
         <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="relative flex size-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-400/30 via-violet-500/20 to-blue-500/10 ring-1 ring-inset ring-white/10">
-              <div className="size-1.5 rounded-full bg-violet-300 shadow-[0_0_8px_rgba(167,139,250,0.6)]" />
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-medium tracking-tight text-zinc-100">aprende</span>
-              <span className="flex items-center gap-1 text-[10px] uppercase tracking-[0.12em] text-zinc-500">
-                <span className="size-1 animate-pulse rounded-full bg-emerald-400/80" />
-                ready
-              </span>
-            </div>
-          </div>
+          <span className="text-sm font-medium tracking-tight text-zinc-100">aprende</span>
           <div className="flex items-center gap-0.5">
             <button
               type="button"
