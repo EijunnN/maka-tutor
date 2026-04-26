@@ -3,14 +3,20 @@ import { createOverlayWindow } from './window';
 import { registerHotkeys, unregisterHotkeys } from './hotkeys';
 import { pathToShotUrl, registerShotProtocol, SHOT_SCHEME } from './protocol';
 import { openSelectionWindow } from './selectionWindow';
-import { cancelCurrentTurn, resetSession, sendTurn } from './agent';
+import { cancelCurrentTurn, resetSession, sendTurn, setActiveSession } from './agent';
 import {
   applyApiKeyToEnv,
   getSnapshot,
   setApiKey,
   setModel,
 } from './settings';
-import type { SendTurnPayload } from '@shared/types';
+import {
+  deleteConversation,
+  listConversations,
+  loadConversation,
+  saveConversation,
+} from './conversations';
+import type { Conversation, SendTurnPayload } from '@shared/types';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -44,6 +50,15 @@ ipcMain.handle('agent:cancel', () => {
 ipcMain.handle('agent:reset', () => {
   resetSession();
 });
+
+ipcMain.handle('agent:set-session', (_event, sessionId: string | undefined) => {
+  setActiveSession(sessionId);
+});
+
+ipcMain.handle('conv:list', () => listConversations());
+ipcMain.handle('conv:load', (_event, id: string) => loadConversation(id));
+ipcMain.handle('conv:save', (_event, conv: Conversation) => saveConversation(conv));
+ipcMain.handle('conv:delete', (_event, id: string) => deleteConversation(id));
 
 ipcMain.handle('settings:get', () => getSnapshot());
 

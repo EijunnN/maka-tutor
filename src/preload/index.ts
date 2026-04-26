@@ -4,6 +4,7 @@ import type {
   ApiBridge,
   AssistantDeltaEvent,
   AssistantMessageEvent,
+  Conversation,
   EventsBridge,
   ScreenshotError,
   ScreenshotEvent,
@@ -19,9 +20,14 @@ const api: ApiBridge = {
   sendTurn: (payload: SendTurnPayload) => ipcRenderer.invoke('agent:send', payload),
   cancelTurn: () => ipcRenderer.invoke('agent:cancel'),
   resetSession: () => ipcRenderer.invoke('agent:reset'),
+  setActiveSession: (sessionId) => ipcRenderer.invoke('agent:set-session', sessionId),
   getSettings: () => ipcRenderer.invoke('settings:get') as Promise<SettingsSnapshot>,
   setApiKey: (value) => ipcRenderer.invoke('settings:set-api-key', value),
   setModel: (model) => ipcRenderer.invoke('settings:set-model', model),
+  listConversations: () => ipcRenderer.invoke('conv:list'),
+  loadConversation: (id) => ipcRenderer.invoke('conv:load', id),
+  saveConversation: (conv: Conversation) => ipcRenderer.invoke('conv:save', conv),
+  deleteConversation: (id) => ipcRenderer.invoke('conv:delete', id),
 };
 
 // Un solo ipcRenderer.on por canal; los suscriptores se mantienen

@@ -1,5 +1,30 @@
 export type ScreenshotMode = 'full' | 'region';
 
+export interface PersistedMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  shots?: ScreenshotEvent[];
+  createdAt: number;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  sessionId?: string;
+  messages: PersistedMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ConversationMeta {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+}
+
 export interface ScreenshotEvent {
   path: string;
   url: string;
@@ -58,7 +83,12 @@ export interface ApiBridge {
   sendTurn: (payload: SendTurnPayload) => Promise<void>;
   cancelTurn: () => Promise<void>;
   resetSession: () => Promise<void>;
+  setActiveSession: (sessionId: string | undefined) => Promise<void>;
   getSettings: () => Promise<SettingsSnapshot>;
   setApiKey: (value: string | null) => Promise<{ ok: boolean; message?: string }>;
   setModel: (model: string) => Promise<void>;
+  listConversations: () => Promise<ConversationMeta[]>;
+  loadConversation: (id: string) => Promise<Conversation | null>;
+  saveConversation: (conv: Conversation) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
 }

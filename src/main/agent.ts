@@ -45,6 +45,10 @@ export function getSessionId(): string | undefined {
   return lastSessionId;
 }
 
+export function setActiveSession(sessionId: string | undefined): void {
+  lastSessionId = sessionId;
+}
+
 interface ContentBlock {
   type: string;
   text?: string;
