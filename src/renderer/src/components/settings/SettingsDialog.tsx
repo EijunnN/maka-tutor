@@ -64,7 +64,7 @@ export function SettingsDialog({ open, onClose }: Props) {
 
   return (
     <div
-      className="pointer-events-auto absolute inset-0 z-30 flex items-stretch justify-stretch bg-[rgba(18,18,22,0.94)] backdrop-blur-2xl backdrop-saturate-200"
+      className="pointer-events-auto absolute inset-0 z-30 flex items-stretch justify-stretch bg-[rgba(10,10,12,0.97)] backdrop-blur-2xl backdrop-saturate-200"
       role="dialog"
       aria-modal="true"
     >
