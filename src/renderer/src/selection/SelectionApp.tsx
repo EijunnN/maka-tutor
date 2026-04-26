@@ -120,10 +120,13 @@ export function SelectionApp() {
 
       {!start && (
         <div className="pointer-events-none absolute inset-x-0 top-8 flex justify-center">
-          <div className="rounded-full border border-white/15 bg-black/85 px-5 py-2 text-sm text-white shadow-2xl backdrop-blur">
-            Arrastra para seleccionar el área &nbsp;·&nbsp;
-            <kbd className="rounded bg-white/15 px-1.5 py-0.5 font-mono text-[11px]">Esc</kbd>{' '}
-            para cancelar
+          <div className="glass-pill flex items-center gap-2 rounded-full px-5 py-2 text-sm text-zinc-100">
+            Arrastra para seleccionar el área
+            <span className="text-zinc-500">·</span>
+            <kbd className="rounded border border-white/15 bg-white/[0.08] px-1.5 py-0.5 font-mono text-[11px] text-zinc-200">
+              Esc
+            </kbd>
+            <span className="text-zinc-400">para cancelar</span>
           </div>
         </div>
       )}

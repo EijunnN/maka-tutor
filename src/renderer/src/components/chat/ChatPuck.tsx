@@ -15,17 +15,17 @@ export const ChatPuck = forwardRef<HTMLButtonElement, ChatPuckProps>(
           type="button"
           onClick={onExpand}
           aria-label="Abrir chat"
-          className="animate-puck-enter group relative flex items-center justify-center rounded-full border border-white/10 bg-neutral-950/95 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-200 hover:scale-105 hover:border-violet-400/40 hover:shadow-[0_12px_40px_rgba(139,92,246,0.3)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+          className="glass-puck animate-puck-enter group relative flex items-center justify-center rounded-full transition-all duration-200 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
           style={{ width: 52, height: 52 }}
         >
-          <span className="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500/0 via-violet-500/0 to-violet-500/0 transition-all duration-300 group-hover:from-violet-500/10 group-hover:via-transparent group-hover:to-blue-500/5" />
+          <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.18),transparent_60%)]" />
           <Sparkles
             size={20}
-            strokeWidth={2}
-            className="relative text-zinc-300 transition-colors duration-200 group-hover:text-violet-300"
+            strokeWidth={1.8}
+            className="relative text-zinc-100 transition-colors duration-200 group-hover:text-violet-200"
           />
           {hasUnseenShots && (
-            <span className="absolute right-0 top-0 size-2.5 rounded-full bg-rose-400 ring-2 ring-neutral-950" />
+            <span className="absolute right-0 top-0 size-2.5 rounded-full bg-rose-400 shadow-[0_0_0_2px_rgba(20,20,24,0.85),0_0_8px_rgba(244,63,94,0.6)]" />
           )}
         </button>
       </div>

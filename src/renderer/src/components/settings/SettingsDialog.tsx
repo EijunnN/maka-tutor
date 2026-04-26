@@ -64,12 +64,12 @@ export function SettingsDialog({ open, onClose }: Props) {
 
   return (
     <div
-      className="pointer-events-auto absolute inset-0 z-30 flex items-stretch justify-stretch bg-neutral-950/95 backdrop-blur-md"
+      className="pointer-events-auto absolute inset-0 z-30 flex items-stretch justify-stretch bg-[rgba(20,20,24,0.78)] backdrop-blur-2xl backdrop-saturate-200"
       role="dialog"
       aria-modal="true"
     >
       <div className="flex w-full flex-col">
-        <header className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <header className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4 py-3">
           <span className="text-sm font-medium tracking-tight text-zinc-100">Ajustes</span>
           <button
             type="button"
@@ -91,7 +91,7 @@ export function SettingsDialog({ open, onClose }: Props) {
             </p>
 
             <div className="mt-3 flex items-center gap-2">
-              <div className="flex flex-1 items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-violet-400/40 focus-within:bg-white/[0.05]">
+              <div className="glass-input flex flex-1 items-center rounded-xl px-3 py-2">
                 <input
                   type={reveal ? 'text' : 'password'}
                   value={apiKey}
@@ -114,7 +114,11 @@ export function SettingsDialog({ open, onClose }: Props) {
                 type="button"
                 onClick={handleSaveKey}
                 disabled={apiKey.trim().length === 0}
-                className="flex h-9 items-center gap-1.5 rounded-xl bg-violet-500 px-3.5 text-xs font-medium text-white transition-colors hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-white/5 disabled:text-zinc-600"
+                className={`flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-xs font-medium transition-colors ${
+                  apiKey.trim().length === 0
+                    ? 'cursor-not-allowed border border-white/[0.06] bg-white/[0.04] text-zinc-600'
+                    : 'glass-button-violet text-white'
+                }`}
               >
                 {savedFlash ? <Check size={14} strokeWidth={2.5} /> : 'Guardar'}
               </button>

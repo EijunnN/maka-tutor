@@ -69,7 +69,7 @@ export function Composer({ status, onSend, onCancel, shotsCount, hasMessages }: 
 
   return (
     <div className="px-5 pb-3 pt-4">
-      <div className="flex items-end gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 transition-colors duration-150 focus-within:border-violet-400/40 focus-within:bg-white/[0.035]">
+      <div className="glass-input flex items-end gap-2 rounded-xl px-3 py-2.5">
         <textarea
           ref={taRef}
           value={value}
@@ -87,10 +87,10 @@ export function Composer({ status, onSend, onCancel, shotsCount, hasMessages }: 
           disabled={!isBusy && !canSend}
           className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 ${
             isBusy
-              ? 'bg-rose-500/90 text-white shadow-[0_0_0_1px_rgba(244,63,94,0.4)] hover:bg-rose-500'
+              ? 'glass-button-rose text-white'
               : canSend
-                ? 'bg-violet-500 text-white shadow-[0_0_0_1px_rgba(167,139,250,0.4)] hover:bg-violet-400'
-                : 'bg-white/[0.05] text-zinc-600'
+                ? 'glass-button-violet text-white'
+                : 'border border-white/[0.06] bg-white/[0.04] text-zinc-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
           }`}
           aria-label={isBusy ? 'Cancelar' : 'Enviar'}
         >

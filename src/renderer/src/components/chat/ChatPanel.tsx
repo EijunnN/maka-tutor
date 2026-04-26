@@ -125,17 +125,12 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
     setConvOpen(false);
   };
 
-  const borderClass = interactive ? 'border-violet-400/25' : 'border-white/[0.06]';
-  const shadowClass = interactive
-    ? 'shadow-[0_24px_70px_rgba(0,0,0,0.7),0_0_0_1px_rgba(139,92,246,0.08),0_8px_40px_-8px_rgba(139,92,246,0.25)]'
-    : 'shadow-[0_24px_70px_-12px_rgba(0,0,0,0.75)]';
-
   return (
     <div
       ref={ref}
-      className={`pointer-events-auto animate-panel-enter fixed bottom-6 right-6 z-20 flex h-[760px] w-[560px] flex-col overflow-hidden rounded-2xl border bg-neutral-950/95 backdrop-blur-xl backdrop-saturate-150 transition-[border-color,box-shadow] duration-300 ${borderClass} ${shadowClass}`}
+      className={`glass-panel ${interactive ? 'glass-panel-interactive' : ''} pointer-events-auto animate-panel-enter fixed bottom-6 right-6 z-20 flex h-[760px] w-[560px] flex-col overflow-hidden rounded-2xl transition-[border-color,box-shadow] duration-300`}
     >
-      <header className="relative flex items-center justify-between gap-2 border-b border-white/[0.05] bg-white/[0.015] px-3 py-2.5">
+      <header className="relative flex items-center justify-between gap-2 border-b border-white/[0.05] bg-white/[0.025] px-3 py-2.5 backdrop-blur-md">
         <div className="relative min-w-0 flex-1">
           <button
             ref={triggerRef}
@@ -161,7 +156,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
           {convOpen && (
             <div
               ref={popoverRef}
-              className="animate-popover-enter absolute left-0 top-full z-30 mt-1.5 flex max-h-[340px] w-[340px] origin-top-left flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-neutral-950/[0.98] shadow-[0_18px_50px_-8px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+              className="glass-popover animate-popover-enter absolute left-0 top-full z-30 mt-1.5 flex max-h-[340px] w-[340px] origin-top-left flex-col overflow-hidden rounded-xl"
               role="listbox"
             >
               <button
@@ -264,7 +259,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
         )}
       </div>
 
-      <div className="border-t border-white/[0.05] bg-white/[0.015]">
+      <div className="glass-section">
         {agentError && (
           <div className="mx-5 mt-3 rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-[12px] text-rose-200">
             {agentError}

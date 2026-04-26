@@ -20,13 +20,13 @@ export function MessageBubble({ message, streaming }: Props) {
                 key={s.path}
                 src={s.url}
                 alt=""
-                className="h-16 max-w-[140px] rounded-lg border border-white/10 object-cover"
+                className="h-16 max-w-[140px] rounded-lg border border-white/15 object-cover shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)]"
               />
             ))}
           </div>
         )}
         {message.text.trim().length > 0 && (
-          <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-violet-500/15 px-3 py-2 text-sm text-zinc-100 ring-1 ring-inset ring-violet-400/20">
+          <div className="glass-bubble-user max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-3.5 py-2 text-sm text-zinc-50">
             {message.text}
           </div>
         )}
