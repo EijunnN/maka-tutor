@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 out/
+release/
 .env
 .env.local
 .env.*.local
@@ -11,3 +12,5 @@ Thumbs.db
 .vscode/
 .idea/
 bun.lockb
+.cache/
+*.tsbuildinfo
