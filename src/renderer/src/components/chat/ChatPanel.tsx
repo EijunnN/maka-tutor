@@ -11,8 +11,11 @@ import {
   Trash2,
   Plus,
   Eye,
+  ArrowRight,
+  Repeat,
+  Dumbbell,
 } from 'lucide-react';
-import type { ConversationMeta, ScreenshotEvent } from '@shared/types';
+import type { ConversationMeta, Nudge, ScreenshotEvent } from '@shared/types';
 import type { AgentStatus, ChatMessage } from '../../hooks/useChat';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
@@ -36,6 +39,9 @@ interface ChatPanelProps {
   onNewChat: () => void;
   onOpenChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
+
+  nudges: Nudge[];
+  onNudge: (nudge: Nudge) => void;
 
   onMinimize: () => void;
   onClose: () => void;
@@ -75,6 +81,8 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
     onNewChat,
     onOpenChat,
     onDeleteChat,
+    nudges,
+    onNudge,
     onMinimize,
     onClose,
     onOpenSettings,
@@ -251,7 +259,7 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
 
       <div className="flex min-h-0 flex-1 flex-col">
         {messages.length === 0 ? (
-          <EmptyState />
+          <EmptyState nudges={nudges} onNudge={onNudge} />
         ) : (
           <div className="min-h-0 flex-1 overflow-hidden px-5 py-5">
             <MessageList messages={messages} status={status} />
@@ -297,9 +305,15 @@ export const ChatPanel = forwardRef<HTMLDivElement, ChatPanelProps>(function Cha
   );
 });
 
-function EmptyState() {
+function EmptyState({
+  nudges,
+  onNudge,
+}: {
+  nudges: Nudge[];
+  onNudge: (nudge: Nudge) => void;
+}) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-8 py-10 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-8 py-10 text-center scrollbar-hidden">
       <div className="relative mb-5">
         <div className="absolute inset-0 rounded-full bg-violet-400/20 blur-xl" />
         <div className="relative flex size-12 items-center justify-center rounded-full border border-violet-400/20 bg-violet-400/10">
@@ -312,6 +326,19 @@ function EmptyState() {
       <p className="mt-1.5 max-w-[340px] text-sm leading-relaxed text-zinc-500">
         Captura algo de tu pantalla o escribe directamente. Yo te lo explico.
       </p>
+
+      {nudges.length > 0 && (
+        <div className="mt-7 w-full max-w-[380px]">
+          <h3 className="mb-2 px-1 text-left text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">
+            Continuar donde lo dejaste
+          </h3>
+          <div className="space-y-1.5">
+            {nudges.map((n) => (
+              <NudgeRow key={n.id} nudge={n} onClick={() => onNudge(n)} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-7 w-full max-w-[380px] space-y-1.5">
         <ActionRow icon={<Camera size={16} strokeWidth={1.8} />} label="Capturar pantalla">
@@ -336,6 +363,43 @@ function EmptyState() {
       </div>
     </div>
   );
+}
+
+function NudgeRow({ nudge, onClick }: { nudge: Nudge; onClick: () => void }) {
+  const meta = nudgeMeta(nudge);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-3 rounded-lg border border-violet-400/15 bg-violet-400/[0.06] px-4 py-2.5 text-left transition-colors duration-150 hover:border-violet-400/30 hover:bg-violet-400/[0.1] focus:outline-none focus-visible:ring-1 focus-visible:ring-violet-400/50"
+    >
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-violet-400/15 text-violet-200">
+        {meta.icon}
+      </span>
+      <span className="flex-1 truncate text-left">
+        <span className="block truncate text-sm text-zinc-100">{nudge.label}</span>
+        <span className="block text-[10px] text-zinc-500">
+          {meta.kindLabel} · hace {Math.round(nudge.age_days)}d
+        </span>
+      </span>
+      <ArrowRight
+        size={14}
+        strokeWidth={2}
+        className="shrink-0 text-zinc-500 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-violet-200"
+      />
+    </button>
+  );
+}
+
+function nudgeMeta(n: Nudge): { icon: React.ReactNode; kindLabel: string } {
+  switch (n.type) {
+    case 'continuar':
+      return { icon: <ArrowRight size={14} strokeWidth={1.8} />, kindLabel: 'Continuar' };
+    case 'repasar':
+      return { icon: <Repeat size={14} strokeWidth={1.8} />, kindLabel: 'Repasar' };
+    case 'practicar':
+      return { icon: <Dumbbell size={14} strokeWidth={1.8} />, kindLabel: 'Practicar' };
+  }
 }
 
 function ActionRow({

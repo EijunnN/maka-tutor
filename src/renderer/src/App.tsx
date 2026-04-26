@@ -5,6 +5,8 @@ import { ChatPuck } from './components/chat/ChatPuck';
 import { useClickthrough } from './hooks/useClickthrough';
 import { useScreenshots } from './hooks/useScreenshots';
 import { useChat } from './hooks/useChat';
+import { useNudges } from './hooks/useNudges';
+import type { Nudge } from '@shared/types';
 
 export function App() {
   const [minimized, setMinimized] = useState(false);
@@ -29,6 +31,7 @@ export function App() {
     openChat,
     deleteChat,
   } = useChat();
+  const { nudges } = useNudges(activeId);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -37,6 +40,13 @@ export function App() {
       clear();
     },
     [send, shots, clear],
+  );
+
+  const handleNudge = useCallback(
+    (n: Nudge) => {
+      send(n.prompt, []);
+    },
+    [send],
   );
 
   return (
@@ -65,6 +75,8 @@ export function App() {
           onNewChat={() => void newChat()}
           onOpenChat={(id) => void openChat(id)}
           onDeleteChat={(id) => void deleteChat(id)}
+          nudges={nudges}
+          onNudge={handleNudge}
           onMinimize={() => setMinimized(true)}
           onClose={() => window.api.quit()}
           onOpenSettings={() => setSettingsOpen(true)}

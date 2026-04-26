@@ -28,6 +28,7 @@ const api: ApiBridge = {
   loadConversation: (id) => ipcRenderer.invoke('conv:load', id),
   saveConversation: (conv: Conversation) => ipcRenderer.invoke('conv:save', conv),
   deleteConversation: (id) => ipcRenderer.invoke('conv:delete', id),
+  getNudges: () => ipcRenderer.invoke('harness:nudges'),
 };
 
 // Un solo ipcRenderer.on por canal; los suscriptores se mantienen

@@ -25,6 +25,19 @@ export interface ConversationMeta {
   messageCount: number;
 }
 
+export type NudgeType = 'continuar' | 'repasar' | 'practicar';
+
+export interface Nudge {
+  id: string;
+  domain_id: string;
+  domain_name: string;
+  type: NudgeType;
+  label: string;
+  prompt: string;
+  rank_score: number;
+  age_days: number;
+}
+
 export interface ScreenshotEvent {
   path: string;
   url: string;
@@ -91,4 +104,5 @@ export interface ApiBridge {
   loadConversation: (id: string) => Promise<Conversation | null>;
   saveConversation: (conv: Conversation) => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  getNudges: () => Promise<Nudge[]>;
 }

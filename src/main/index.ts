@@ -17,6 +17,7 @@ import {
   loadConversation,
   saveConversation,
 } from './conversations';
+import { computeNudges } from './harness/nudges';
 import type { Conversation, SendTurnPayload } from '@shared/types';
 
 let mainWindow: BrowserWindow | null = null;
@@ -60,6 +61,8 @@ ipcMain.handle('conv:list', () => listConversations());
 ipcMain.handle('conv:load', (_event, id: string) => loadConversation(id));
 ipcMain.handle('conv:save', (_event, conv: Conversation) => saveConversation(conv));
 ipcMain.handle('conv:delete', (_event, id: string) => deleteConversation(id));
+
+ipcMain.handle('harness:nudges', () => computeNudges());
 
 ipcMain.handle('settings:get', () => getSnapshot());
 
