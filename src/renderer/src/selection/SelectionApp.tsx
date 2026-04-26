@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Point {
   x: number;
@@ -21,6 +21,8 @@ export function SelectionApp() {
 
   const [start, setStart] = useState<Point | null>(null);
   const [end, setEnd] = useState<Point | null>(null);
+  const rafRef = useRef(0);
+  const pendingRef = useRef<Point | null>(null);
 
   const rect: Rect | null =
     start && end
@@ -39,7 +41,10 @@ export function SelectionApp() {
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -49,7 +54,12 @@ export function SelectionApp() {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!start) return;
-    setEnd({ x: e.clientX, y: e.clientY });
+    pendingRef.current = { x: e.clientX, y: e.clientY };
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      if (pendingRef.current) setEnd(pendingRef.current);
+    });
   };
 
   const handleMouseUp = () => {
@@ -60,20 +70,12 @@ export function SelectionApp() {
     }
   };
 
-  const labelPosition = rect
-    ? {
-        left: Math.min(rect.x, window.innerWidth - 110),
-        top: rect.y > 30 ? rect.y - 26 : rect.y + rect.height + 6,
-      }
-    : { left: 0, top: 0 };
-
   return (
     <div
       className="fixed inset-0 cursor-crosshair select-none overflow-hidden"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      style={{ pointerEvents: 'auto' }}
     >
       {sourceUrl && (
         <img
@@ -85,39 +87,32 @@ export function SelectionApp() {
         />
       )}
 
-      <svg className="pointer-events-none absolute inset-0 h-full w-full">
-        <defs>
-          <mask id="selection-hole">
-            <rect width="100%" height="100%" fill="white" />
-            {rect && (
-              <rect
-                x={rect.x}
-                y={rect.y}
-                width={rect.width}
-                height={rect.height}
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#selection-hole)" />
-        {rect && (
-          <rect
-            x={rect.x}
-            y={rect.y}
-            width={rect.width}
-            height={rect.height}
-            fill="none"
-            stroke="rgb(167, 139, 250)"
-            strokeWidth={1.5}
-          />
-        )}
-      </svg>
+      {/* Capa oscura única; cuando hay rect, la sustituimos por
+          un div con box-shadow inset infinita: GPU-composited, cero
+          re-cálculo de SVG por frame. */}
+      {rect ? (
+        <div
+          className="pointer-events-none absolute rounded-[1px] border border-violet-300/80"
+          style={{
+            left: rect.x,
+            top: rect.y,
+            width: rect.width,
+            height: rect.height,
+            boxShadow: '0 0 0 99999px rgba(0, 0, 0, 0.55)',
+            willChange: 'left, top, width, height',
+          }}
+        />
+      ) : (
+        <div className="pointer-events-none absolute inset-0 bg-black/55" />
+      )}
 
       {rect && (
         <div
-          className="pointer-events-none absolute rounded-md bg-black/85 px-2 py-1 font-mono text-[11px] text-white shadow-lg"
-          style={labelPosition}
+          className="pointer-events-none absolute whitespace-nowrap rounded-md bg-black/85 px-2 py-1 font-mono text-[11px] text-white shadow-lg"
+          style={{
+            left: Math.min(rect.x, window.innerWidth - 110),
+            top: rect.y > 30 ? rect.y - 26 : rect.y + rect.height + 6,
+          }}
         >
           {Math.round(rect.width)} × {Math.round(rect.height)}
         </div>
