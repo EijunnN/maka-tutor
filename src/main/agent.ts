@@ -2,6 +2,7 @@ import { query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { nativeImage, type BrowserWindow } from 'electron';
 import { getModel } from './settings';
 import { findClaudeExecutable } from './claudePath';
+import { buildTurnContext } from './harness/orchestrator';
 
 const MAX_IMAGE_DIMENSION = 1568;
 const JPEG_QUALITY = 85;
@@ -16,16 +17,6 @@ interface SendTurnArgs {
   text: string;
   screenshots: ScreenshotInput[];
 }
-
-const SYSTEM_PROMPT = `Eres un tutor experto en software, productividad y herramientas digitales. El usuario te comparte screenshots de su pantalla y te pide que le enseñes a usar lo que está viendo o a hacer una tarea específica.
-
-Reglas:
-- Responde en español, claro y directo.
-- Da pasos numerados cortos. Cada paso debe ser una acción concreta que el usuario pueda hacer ahora mismo.
-- Si necesitas ver un cambio de estado o confirmar dónde está el usuario, pídele otro screenshot ("Manda otra captura para que vea cómo te quedó").
-- Usa markdown: listas, **negrita** para botones/opciones, \`código\` para nombres de archivos, comandos o controles UI.
-- No inventes UI que no veas. Si el screenshot no es suficiente, dilo.
-- Sé breve. Mejor dos pasos correctos que diez pasos genéricos.`;
 
 let lastSessionId: string | undefined;
 let currentAbort: AbortController | null = null;
@@ -95,6 +86,7 @@ async function buildUserContent(args: SendTurnArgs): Promise<ContentBlock[]> {
 
 export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<void> {
   const content = await buildUserContent(args);
+  const turnCtx = await buildTurnContext(args.text);
 
   async function* promptStream(): AsyncGenerator<SDKUserMessage> {
     yield {
@@ -131,7 +123,7 @@ export async function sendTurn(args: SendTurnArgs, win: BrowserWindow): Promise<
       prompt: promptStream(),
       options: {
         model: getModel(),
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt: turnCtx.systemPrompt,
         allowedTools: [],
         resume: lastSessionId,
         abortController: abort,

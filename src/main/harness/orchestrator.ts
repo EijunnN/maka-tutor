@@ -1,0 +1,103 @@
+import { detectDomain, loadDomain, touchDomain, type DomainProfile } from './domains';
+import { loadProfile, type UserProfile } from './profile';
+import { searchMemory, type MemoryHit } from './memory';
+
+const BASE_PROMPT = `Eres un tutor experto en software, productividad y herramientas digitales. El usuario te comparte screenshots de su pantalla y te pide que le enseñes a usar lo que está viendo o a hacer una tarea específica.
+
+Reglas pedagógicas:
+- Responde en español, claro y directo.
+- Da pasos numerados cortos. Cada paso debe ser una acción concreta que el usuario pueda hacer ahora mismo.
+- Si necesitas ver un cambio de estado o confirmar dónde está el usuario, pídele otro screenshot ("Manda otra captura para que vea cómo te quedó").
+- Usa markdown: listas, **negrita** para botones/opciones, \`código\` para nombres de archivos, comandos o controles UI.
+- No inventes UI que no veas. Si el screenshot no es suficiente, dilo.
+- Sé breve. Mejor dos pasos correctos que diez pasos genéricos.
+- Antes de avanzar a algo nuevo, verifica que el usuario entendió el paso previo cuando sea relevante.`;
+
+export interface TurnContext {
+  systemPrompt: string;
+  domain: DomainProfile | null;
+  profile: UserProfile;
+  memoryHits: MemoryHit[];
+}
+
+export async function buildTurnContext(userText: string): Promise<TurnContext> {
+  const profile = await loadProfile();
+  const detected = detectDomain(userText);
+  const domain = detected ? await loadDomain(detected.id) : null;
+  if (domain) {
+    await touchDomain(domain.id);
+  }
+  const memoryHits = searchMemory(userText, { domain: domain?.id, limit: 3 });
+
+  const sections: string[] = [BASE_PROMPT];
+
+  // Perfil del usuario
+  const profileBits: string[] = [];
+  if (profile.level_general) profileBits.push(`Nivel general: **${profile.level_general}**.`);
+  if (profile.explanation_style) profileBits.push(`Prefiere: ${profile.explanation_style}.`);
+  if (profile.interests.length > 0) profileBits.push(`Le interesa: ${profile.interests.join(', ')}.`);
+  if (profile.notes) profileBits.push(profile.notes);
+  if (profileBits.length > 0) {
+    sections.push(`## Sobre el usuario\n${profileBits.map((b) => `- ${b}`).join('\n')}`);
+  }
+
+  // Perfil del dominio activo
+  if (domain) {
+    const lines: string[] = [];
+    if (domain.level) lines.push(`Nivel actual: **${domain.level}**.`);
+    if (domain.concepts_mastered.length > 0) {
+      lines.push(`Ya domina: ${domain.concepts_mastered.join(', ')}.`);
+    }
+    if (domain.concepts_in_progress.length > 0) {
+      lines.push(`En progreso: ${domain.concepts_in_progress.join(', ')}.`);
+    }
+    if (domain.recurring_mistakes.length > 0) {
+      lines.push(`Errores recurrentes: ${domain.recurring_mistakes.join('; ')}.`);
+    }
+    if (domain.notes) lines.push(domain.notes);
+    if (lines.length > 0) {
+      sections.push(
+        `## Contexto sobre ${domain.display_name}\n${lines.map((b) => `- ${b}`).join('\n')}\n\nUsa este contexto para no repetir lo que ya sabe; si detectas que un "ya dominado" no se sostiene en este turno, corrígelo y márcalo en tu respuesta.`,
+      );
+    }
+  }
+
+  // Recuerdos relevantes de conversaciones pasadas
+  if (memoryHits.length > 0) {
+    const memBlock = memoryHits
+      .map(
+        (h, i) =>
+          `[${i + 1}] (${h.role}, hace ${friendlyAgo(Date.now() - h.createdAt)}): "${truncate(
+            h.text,
+            220,
+          )}"`,
+      )
+      .join('\n');
+    sections.push(
+      `## Conversaciones pasadas relacionadas\n${memBlock}\n\nÚsalas como contexto cuando aporten; no las cites textualmente al usuario salvo que él lo pida.`,
+    );
+  }
+
+  return {
+    systemPrompt: sections.join('\n\n'),
+    domain,
+    profile,
+    memoryHits,
+  };
+}
+
+function friendlyAgo(ms: number): string {
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}min`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  return `${day}d`;
+}
+
+function truncate(s: string, n: number): string {
+  if (s.length <= n) return s;
+  return `${s.slice(0, n - 1)}…`;
+}
