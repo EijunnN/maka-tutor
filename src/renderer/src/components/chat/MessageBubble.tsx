@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ChatMessage } from '../../hooks/useChat';
@@ -7,7 +8,7 @@ interface Props {
   streaming?: boolean;
 }
 
-export function MessageBubble({ message, streaming }: Props) {
+function MessageBubbleImpl({ message, streaming }: Props) {
   const isUser = message.role === 'user';
 
   if (isUser) {
@@ -37,7 +38,15 @@ export function MessageBubble({ message, streaming }: Props) {
   return (
     <div className="flex flex-col items-start">
       <div className="prose-aprende max-w-[92%] text-sm text-zinc-200">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text || '​'}</ReactMarkdown>
+        {streaming ? (
+          // Mientras streaming, render plano para evitar reparseo de
+          // todo el árbol markdown por cada delta. Al terminar el
+          // turno, swap a ReactMarkdown (memo invalidado por
+          // streaming=false → re-render completo, ya rápido).
+          <span className="whitespace-pre-wrap">{message.text}</span>
+        ) : (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text || '​'}</ReactMarkdown>
+        )}
         {streaming && (
           <span className="ml-0.5 inline-block h-3.5 w-[2px] translate-y-0.5 animate-pulse bg-violet-300/80" />
         )}
@@ -45,3 +54,12 @@ export function MessageBubble({ message, streaming }: Props) {
     </div>
   );
 }
+
+export const MessageBubble = memo(MessageBubbleImpl, (prev, next) => {
+  // Re-render solo si cambia este mensaje específico o su flag streaming.
+  return (
+    prev.message.id === next.message.id &&
+    prev.message.text === next.message.text &&
+    prev.streaming === next.streaming
+  );
+});

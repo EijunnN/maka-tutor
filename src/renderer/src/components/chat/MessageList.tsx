@@ -7,18 +7,37 @@ interface Props {
   status: AgentStatus;
 }
 
-export function MessageList({ messages, status }: Props) {
-  const endRef = useRef<HTMLDivElement>(null);
+const STICK_THRESHOLD_PX = 80;
 
+export function MessageList({ messages, status }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+
+  // Auto-scroll instant cada vez que cambia algo, pero sólo si el
+  // usuario está cerca del final. Si scrolló hacia arriba, no le
+  // robamos el scroll mientras lee.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const el = containerRef.current;
+    if (!el || !stickToBottomRef.current) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages, status]);
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < STICK_THRESHOLD_PX;
+  };
 
   const lastAssistant =
     [...messages].reverse().find((m) => m.role === 'assistant') ?? null;
 
   return (
-    <div className="scrollbar-hidden flex h-full flex-col gap-6 overflow-y-auto pr-1">
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="scrollbar-hidden flex h-full flex-col gap-6 overflow-y-auto pr-1"
+    >
       {messages.map((m) => (
         <MessageBubble
           key={m.id}
@@ -33,7 +52,6 @@ export function MessageList({ messages, status }: Props) {
           <span className="size-1 animate-pulse rounded-full bg-violet-300 [animation-delay:300ms]" />
         </div>
       )}
-      <div ref={endRef} />
     </div>
   );
 }
