@@ -1,8 +1,11 @@
 import { BrowserWindow, globalShortcut } from 'electron';
+import { setTimeout as delay } from 'node:timers/promises';
 import { captureMonitorAtCursor } from './capture';
 
 export const HOTKEY_FULL = 'CommandOrControl+Shift+Space';
 export const HOTKEY_REGION = 'CommandOrControl+Shift+A';
+
+const HIDE_DELAY_MS = 80;
 
 interface RegisterArgs {
   getMainWindow: () => BrowserWindow | null;
@@ -14,7 +17,15 @@ export function registerHotkeys({ getMainWindow, onRegion, pathToShotUrl }: Regi
   globalShortcut.register(HOTKEY_FULL, async () => {
     const win = getMainWindow();
     if (!win) return;
+
+    // Belt-and-suspenders: además de setContentProtection, ocultamos la
+    // ventana antes de capturar por si WebView2 + transparente ignora el
+    // flag en alguna combinación de Windows.
+    const wasVisible = win.isVisible();
+    if (wasVisible) win.hide();
+
     try {
+      if (wasVisible) await delay(HIDE_DELAY_MS);
       const result = await captureMonitorAtCursor();
       win.webContents.send('screenshot:captured', {
         ...result,
@@ -24,6 +35,8 @@ export function registerHotkeys({ getMainWindow, onRegion, pathToShotUrl }: Regi
     } catch (err) {
       console.error('[hotkey] full capture failed', err);
       win.webContents.send('screenshot:error', { message: String(err) });
+    } finally {
+      if (wasVisible && !win.isDestroyed()) win.show();
     }
   });
 
